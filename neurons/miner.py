@@ -19,6 +19,7 @@ import os
 import time
 import typing
 from datetime import datetime
+import json
 
 import bittensor as bt
 from dotenv import load_dotenv
@@ -103,9 +104,10 @@ class Miner(BaseMinerNeuron):
             )
 
         ranked_docs = self.structured_search_engine.search(query)
-
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
-        query.results = ranked_docs
+        filtered_docs = self.filter_docs(ranked_docs)
+        bt.logging.debug(f"{len(filtered_docs)} filtered_docs", filtered_docs)
+        query.results = filtered_docs
         end_time = datetime.now()
         elapsed_time = (end_time - start_time).total_seconds()
         bt.logging.info(
@@ -195,6 +197,110 @@ class Miner(BaseMinerNeuron):
                 f"Received request with version {query.version}, is newer than miner running version {get_version()}. You may updating the repo and restart the miner."
             )
 
+    def filter_docs(self, ranked_docs):
+        newline = "\n"
+        prompt_docs = "\n\n".join(
+            [
+                f"ItemId: {i}\nTime: {doc['created_at'].split('T')[0]}\nText: {doc['text'][:1000].replace(newline, '  ')}"
+                for i, doc in enumerate(ranked_docs)
+            ])
+        chat_completion = self.llm_client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": """Below are the metrics and definitions: 
+        outdated: Time-sensitive information that is no longer current or relevant.
+        insightless: Superficial content lacking depth and comprehensive insights.
+        somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
+        Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
+                },
+                {
+                    "role": "system",
+                    "content": f"Current Time: {datetime.now().isoformat().split('T')[0]}",
+                },
+                {
+                    "role": "system",
+                    "content": """
+        Example 1:
+        ItemId: 0
+        Time: "2023-11-25" 
+        Text: Also driving the charm is Blast's unique design: Depositors start earning yields on the transferred ether alongside BLAST points. "Blast natively participates in ETH staking, and the staking yield is passed back to the L2's users and dapps," the team said in a post Tuesday. 'We've redesigned the L2 from the ground up so that if you have 1 ETH in your wallet on Blast, over time, it grows to 1.04, 1.08, 1.12 ETH automatically."
+        As such, Blast is invite-only as of Tuesday, requiring a code from invited users to gain access. Besides, the BLAST points can be redeemed starting in May.Blast raised over $20 million in a round led by Paradigm and Standard Crypto and is headed by pseudonymous figurehead @PacmanBlur, one of the co-founders of NFT marketplace Blur.
+        @PacmanBlur said in a separate post that Blast was an extension of the Blur ecosystem, letting Blur users earn yields on idle assets while improving the technical aspects required to offer sophisticated NFT products to users.
+        BLUR prices rose 12%% in the past 24 hours following the release of Blast
+
+
+        Output:
+        item_id: 0
+        choice: insightful
+        reason: It is contains insightful information about the Blast project.
+
+        Example 2:
+        ItemId: 1
+        Time: "2024-03-19"
+        Text: $SLERF to the moon!
+        $BOME $SOL $MUMU $BONK $BOPE $WIF $NAP 🥳
+
+        Output:
+        item_id: 1
+        choice: insightless
+        reason: It does not contain much meaningful information, just sentiment about some tickers.
+        """,
+                },
+                {
+                    "role": "user",
+                    "content": f"You will be given a list of documents with id and you have to rate them based on its information and insightfulness. The documents are as follows:\n"
+                               + prompt_docs,
+                },
+                {
+                    "role": "user",
+                    "content": f"Use the metric choices [outdated, insightless, somewhat insightful, insightful] to evaluate the text.",
+                },
+                {
+                    "role": "user",
+                    "content": "Must answer in JSON format of a list of choices with item ids for all the given items: "
+                               + "{'results': [{'item_id': the item id of choice, e.g. 0, 'reason': a very short explanation of your choice, 'choice':The choice of answer. }, {'item_id': 1, 'reason': explanation, 'choice': answer } , ... ] } ",
+                },
+            ],
+            model="gpt-3.5-turbo"
+        )
+
+        content_string = chat_completion.choices[0].message.content
+        data = json.loads(content_string)
+        selected_tweets = []
+        for item in data['results']:
+            if item['choice'] == 'insightful':
+                selected_tweets.append(item)
+            if len(selected_tweets) == 10:
+                break
+        if len(selected_tweets) < 10:
+            for item in data['results']:
+                if item['choice'] == 'somewhat insightful' and item not in selected_tweets:
+                    selected_tweets.append(item)
+                if len(selected_tweets) == 10:
+                    break
+        if len(selected_tweets) < 10:
+            for item in data['results']:
+                if item not in selected_tweets:
+                    selected_tweets.append(item)
+                if len(selected_tweets) == 10:
+                    break
+
+        result = json.dumps({"results": selected_tweets}, indent=4)
+        data_result = json.loads(result)
+        item_ids = [item["item_id"] for item in data["results"]]
+        filtered_docs = []
+        for i in range(len(ranked_docs)):
+            if i in item_ids:
+                filtered_docs.append(ranked_docs[i])
+        return filtered_docs
+
+
+
+    def add_tweet_with_new_id(self, tweet, new_id, selected_tweets):
+        tweet = tweet.copy()
+        tweet['item_id'] = new_id
+        selected_tweets.append(tweet)
 
 # This is the main function, which runs the miner.
 if __name__ == "__main__":
