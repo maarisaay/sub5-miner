@@ -247,6 +247,7 @@ class Evaluator:
                 llm_ranking_scores = self.llm_semantic_search_evaluation(
                     query_string, groundtruth_docs
                 )
+                bt.logging.info(f"LLM RANKING SCORES: {llm_ranking_scores}")
                 rank_scores[i] = ndcg_score(llm_ranking_scores, size)
 
                 bt.logging.info(f"Semantic search quality score: {rank_scores[i]}")
