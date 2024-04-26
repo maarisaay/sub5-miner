@@ -200,7 +200,8 @@ class Miner(BaseMinerNeuron):
             )
 
     def filter_docs(self, ranked_docs):
-        api_key = os.environ.get("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")
+        load_dotenv()
+        api_key = os.environ.get("OPENAI_API_KEY")
         client_ai = OpenAI(api_key=api_key)
         newline = "\n"
         prompt_docs = "\n\n".join(
