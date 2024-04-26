@@ -267,7 +267,7 @@ class Miner(BaseMinerNeuron):
                                + "{'results': [{'item_id': the item id of choice, e.g. 0, 'reason': a very short explanation of your choice, 'choice':The choice of answer. }, {'item_id': 1, 'reason': explanation, 'choice': answer } , ... ] } ",
                 },
             ],
-            model="gpt-3.5-turbo"
+            model="gpt-4-turbo"
         )
 
         content_string = chat_completion.choices[0].message.content
