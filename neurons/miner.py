@@ -288,6 +288,7 @@ class Miner(BaseMinerNeuron):
 
         result = json.dumps({"results": selected_tweets}, indent=4)
         data_result = json.loads(result)
+        bt.logging.info(f"GPT RESULT: {data_result}")
         item_ids = [item["item_id"] for item in data["results"]]
         filtered_docs = []
         for i in range(len(ranked_docs)):
