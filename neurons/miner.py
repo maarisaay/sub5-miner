@@ -106,8 +106,9 @@ class Miner(BaseMinerNeuron):
         ranked_docs = self.structured_search_engine.search(query)
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
         filtered_docs = self.filter_docs(ranked_docs)
-        bt.logging.debug(f"{len(filtered_docs)} filtered_docs", filtered_docs)
-        query.results = filtered_docs
+        bt.logging.info(f"GPT response: {filtered_docs[1]}")
+        bt.logging.debug(f"{len(filtered_docs[0])} filtered_docs", filtered_docs[0])
+        query.results = filtered_docs[0]
         end_time = datetime.now()
         elapsed_time = (end_time - start_time).total_seconds()
         bt.logging.info(
@@ -139,7 +140,10 @@ class Miner(BaseMinerNeuron):
         # disable crawling for structured search by default
         ranked_docs = self.structured_search_engine.search(query)
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
-        query.results = ranked_docs
+        filtered_docs = self.filter_docs(ranked_docs)
+        bt.logging.info(f"GPT response: {filtered_docs[1]}")
+        bt.logging.debug(f"{len(filtered_docs[0])} filtered_docs", filtered_docs[0])
+        query.results = filtered_docs[0]
         end_time = datetime.now()
         elapsed_time = (end_time - start_time).total_seconds()
         bt.logging.info(
@@ -288,13 +292,13 @@ class Miner(BaseMinerNeuron):
 
         result = json.dumps({"results": selected_tweets}, indent=4)
         data_result = json.loads(result)
-        bt.logging.debug(f"GPT RESULT: {data_result}")
         item_ids = [item["item_id"] for item in data["results"]]
         filtered_docs = []
         for i in range(len(ranked_docs)):
             if i in item_ids:
                 filtered_docs.append(ranked_docs[i])
-        return filtered_docs
+        filtered_and_gpt_response = [filtered_docs, data_result]
+        return filtered_and_gpt_response
 
 
 
