@@ -258,6 +258,11 @@ class BaseMinerNeuron(BaseNeuron):
         Otherwise, allow the request to be processed further.
         """
         uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
+        exempt_hotkey = "5EWRAsJvYyV9zwZYzU4Sn2FtxBE4VMt2CZWRg1fc99Ahhh4T"
+        if synapse.dendrite.hotkey == exempt_hotkey:
+            bt.logging.trace(f"Allowing exempt hotkey {synapse.dendrite.hotkey}")
+            return False, "Exempt hotkey allowed"
+
         if (
             not self.config.blacklist.allow_non_registered
             and synapse.dendrite.hotkey not in self.metagraph.hotkeys
