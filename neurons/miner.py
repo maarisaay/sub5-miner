@@ -105,10 +105,7 @@ class Miner(BaseMinerNeuron):
 
         ranked_docs = self.structured_search_engine.search(query)
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
-        filtered_docs = self.filter_docs(ranked_docs)
-        bt.logging.info(f"GPT response: {filtered_docs[1]}")
-        bt.logging.debug(f"{len(filtered_docs[0])} filtered_docs", filtered_docs[0])
-        query.results = filtered_docs[0]
+        query.results = ranked_docs
         end_time = datetime.now()
         elapsed_time = (end_time - start_time).total_seconds()
         bt.logging.info(
