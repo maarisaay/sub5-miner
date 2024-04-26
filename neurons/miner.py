@@ -20,6 +20,7 @@ import time
 import typing
 from datetime import datetime
 import json
+from openai import OpenAI
 
 import bittensor as bt
 from dotenv import load_dotenv
@@ -199,13 +200,15 @@ class Miner(BaseMinerNeuron):
             )
 
     def filter_docs(self, ranked_docs):
+        api_key = os.environ.get("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")
+        client_ai = OpenAI(api_key=api_key)
         newline = "\n"
         prompt_docs = "\n\n".join(
             [
                 f"ItemId: {i}\nTime: {doc['created_at'].split('T')[0]}\nText: {doc['text'][:1000].replace(newline, '  ')}"
                 for i, doc in enumerate(ranked_docs)
             ])
-        chat_completion = self.llm_client.chat.completions.create(
+        chat_completion = client_ai.chat.completions.create(
             messages=[
                 {
                     "role": "system",
