@@ -171,14 +171,14 @@ class StructuredSearchEngine:
         }
 
         bt.logging.info(f"BODY: {body}")
-
         response = self.search_client.search(index=index_name, body=body)
         bt.logging.info(f"RESPONSE: {response}")
         ranked_docs = [doc["_source"] for doc in response["hits"]["hits"]]
         bt.logging.info(f"RANKED_DOCS: {ranked_docs}")
         # optional: you may implement yourselves additional post-processing filtering/ranking here
-
-        return ranked_docs
+        result = [body, response, ranked_docs]
+        # return ranked_docs
+        return result
 
     def crawl_and_index_data(self, query_string, author_usernames, max_size):
         """
