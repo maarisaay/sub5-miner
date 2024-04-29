@@ -159,11 +159,11 @@ class Miner(BaseMinerNeuron):
         )
         self.check_version(query)
 
+
+        bt.logging.info(f"QUERY: {query}")
         ranked_docs = self.structured_search_engine.vector_search(query)
-        bt.logging.info(f"BODY: {ranked_docs['body']}")
-        bt.logging.debug(f"{len(ranked_docs['ranked_docs'])} ranked_docs", ranked_docs['ranked_docs'])
-        bt.logging.info(f"RANKED: {ranked_docs['response']}")
-        query.results = ranked_docs['ranked_docs']
+        bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
+        query.results = ranked_docs
         end_time = datetime.now()
         elapsed_time = (end_time - start_time).total_seconds()
         bt.logging.info(
