@@ -2,6 +2,10 @@ import os
 
 import bittensor as bt
 from dotenv import load_dotenv
+import os
+import json
+from openai import OpenAI
+from datetime import datetime
 
 from ..utils.embeddings import pad_tensor, text_embedding, MAX_EMBEDDING_DIM
 
@@ -152,6 +156,9 @@ class StructuredSearchEngine:
             return []
 
     def vector_search(self, query):
+        load_dotenv()
+        api_key = os.environ.get("OPENAI_API_KEY")
+        client_ai = OpenAI(api_key=api_key)
         topk = query.size
         query_string = query.query_string
         index_name = query.index_name if query.index_name else "eth_denver"
@@ -170,8 +177,70 @@ class StructuredSearchEngine:
             },
         }
 
+        answears = []
+        for i, doc in enumerate(body["knn"]["query_vector"]):
+            prompt = (
+                "You are a crypto researcher, and you will be given speaker transcript as your source of knowledge in ETH Denver 2024. "
+                "Your job is to look for a question about the speaker and text 5 answers that can be answered"
+                "Transcript:\n\n"
+            )
+            prompt += doc
+            prompt += (
+                "Provide the question in less than 15 words. "
+                "Please give the question text only, without any additional context or explanation."
+                "Answear in JSON format of {'text': [list of 5 answears]}"
+            )
+            output = client_ai.chat.completions.create(
+                model="gpt-4-turbo",
+                # response_format={"type": "json_object"},
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+                temperature=1.5,
+                timeout=60,
+            )
+            output_json = output.json()
+            output_dict = json.loads(output_json)
+            text = output_dict['choices'][0]['message']['content']
+
+            output2 = client_ai.chat.completions.create(
+                model="gpt-4-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": """Below are the metrics and definitions: 
+                                    outdated: Time-sensitive information that is no longer current or relevant.
+                                    insightless: Superficial content lacking depth and comprehensive insights.
+                                    somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
+                                    Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
+                    },
+                    {
+                        "role": "system",
+                        "content": f"Current Time: {datetime.now().isoformat().split('T')[0]}",
+                    },
+                    {
+                        "role": "user",
+                        "content": f"You will be given a list with 5 answears. Choose one answear based on its information and insightfulness which the most closely matches the insightful rating. Please give choosen answear only, without any additional context or explanation. The answears are as follows:\n"
+                                   + text,
+                    },
+                ],
+                temperature=0,
+            )
+            output2_json = output2.json()
+            output2_dict = json.loads(output2_json)
+            answear = {}
+            answear['item_id'] = i
+            answear['text'] = output2_dict['choices'][0]['message']['content']
+            answear['text'] = answear['text'].replace('"', '')
+            answears.append(answear)
+
         response = self.search_client.search(index=index_name, body=body)
         ranked_docs = [doc["_source"] for doc in response["hits"]["hits"]]
+        for i, item in enumerate(ranked_docs):
+            item['text'] = answears[i]['text']
         # optional: you may implement yourselves additional post-processing filtering/ranking here
         return ranked_docs
 

@@ -159,8 +159,6 @@ class Miner(BaseMinerNeuron):
         )
         self.check_version(query)
 
-
-        bt.logging.info(f"QUERY: {query}")
         ranked_docs = self.structured_search_engine.vector_search(query)
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
         query.results = ranked_docs
