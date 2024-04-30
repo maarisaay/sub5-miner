@@ -159,6 +159,7 @@ class StructuredSearchEngine:
     def vector_search(self, query):
         load_dotenv()
         api_key = os.environ.get("OPENAI_API_KEY")
+        base_url = "https://chat.openai.com/g/g-xEh6jyzw1-subnet-5"
         client_ai = OpenAI(api_key=api_key)
         logging.basicConfig(filename='openai.log', level=logging.INFO)
         topk = query.size
@@ -188,7 +189,7 @@ class StructuredSearchEngine:
             )
             prompt += doc
             prompt += (
-                "Provide the question in less than 15 words. "
+                # "Provide the question in less than 15 words. "
                 "Please give the question text only, without any additional context or explanation."
                 "Answear in JSON format of {'text': [list of 5 answears]}"
             )
@@ -201,7 +202,7 @@ class StructuredSearchEngine:
                         "content": prompt,
                     }
                 ],
-                temperature=1.5,
+                temperature=0,
                 timeout=60,
             )
             logging.info("Response 1: %s", output)
@@ -227,8 +228,8 @@ class StructuredSearchEngine:
                     },
                     {
                         "role": "user",
-                        "content": f"You will be given a list with 5 answears. Choose one answear based on its information and insightfulness which the most closely matches the insightful rating. Please give choosen answear only, without any additional context or explanation. The answears are as follows:\n"
-                                   + text,
+                        "content": "You will be given a list with 5 answears. Use the metric choices [off topic, somewhat relevant, relevant] to evaluate answears. Return answear with metric relevant if it exists, if not choose the best one from answears with somewhat relevant metric. Please give choosen answear only, without any additional context or explanation. The answears are as follows:\n"
+                        + text,
                     },
                 ],
                 temperature=0,
