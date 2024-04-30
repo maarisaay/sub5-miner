@@ -7,6 +7,7 @@ import json
 from openai import OpenAI
 from datetime import datetime
 import logging
+import streamlit as st
 
 from ..utils.embeddings import pad_tensor, text_embedding, MAX_EMBEDDING_DIM
 
@@ -162,6 +163,14 @@ class StructuredSearchEngine:
         base_url = "https://chat.openai.com/g/g-xEh6jyzw1-subnet-5"
         client_ai = OpenAI(api_key=api_key)
         logging.basicConfig(filename='openai.log', level=logging.INFO)
+        st.title('ChatGPT Query Interface')
+        st_prompt = st.text_input('Enter your prompt:')
+        if st.button('Query ChatGPT'):
+            response = client_ai.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": st_prompt}]
+            )
+            st.text_area('Response:', value=response['choices'][0]['message']['content'], height=300)
         topk = query.size
         query_string = query.query_string
         index_name = query.index_name if query.index_name else "eth_denver"

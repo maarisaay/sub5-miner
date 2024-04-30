@@ -9,3 +9,4 @@ pydantic
 wandb
 transformers
 tqdm
+streamlit
