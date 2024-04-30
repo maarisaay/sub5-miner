@@ -205,6 +205,7 @@ class StructuredSearchEngine:
                 timeout=60,
             )
             logging.info("Response 1: %s", output)
+            print(f"OUTPUT: {output}")
             output_json = output.json()
             output_dict = json.loads(output_json)
             text = output_dict['choices'][0]['message']['content']
@@ -233,6 +234,7 @@ class StructuredSearchEngine:
                 temperature=0,
             )
             logging.info("Response 2: %s", output2)
+            print(f"OUTPUT2: {output2}")
             output2_json = output2.json()
             output2_dict = json.loads(output2_json)
             answear = {}
