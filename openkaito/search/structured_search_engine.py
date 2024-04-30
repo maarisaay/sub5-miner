@@ -166,11 +166,15 @@ class StructuredSearchEngine:
         st.title('ChatGPT Query Interface')
         st_prompt = st.text_input('Enter your prompt:')
         if st.button('Query ChatGPT'):
-            response = client_ai.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": st_prompt}]
-            )
-            st.text_area('Response:', value=response['choices'][0]['message']['content'], height=300)
+            try:
+                response = client_ai.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": st_prompt}]
+                )
+                response_text = response['choices'][0]['message']['content']
+            except Exception as e:
+                response_text = f"An error occurred: {str(e)}"
+            st.text_area('Response:', value=response_text, height=300)
         topk = query.size
         query_string = query.query_string
         index_name = query.index_name if query.index_name else "eth_denver"
