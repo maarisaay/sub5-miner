@@ -6,6 +6,7 @@ import os
 import json
 from openai import OpenAI
 from datetime import datetime
+import logging
 
 from ..utils.embeddings import pad_tensor, text_embedding, MAX_EMBEDDING_DIM
 
@@ -159,6 +160,7 @@ class StructuredSearchEngine:
         load_dotenv()
         api_key = os.environ.get("OPENAI_API_KEY")
         client_ai = OpenAI(api_key=api_key)
+        logging.basicConfig(filename='openai.log', level=logging.INFO)
         topk = query.size
         query_string = query.query_string
         index_name = query.index_name if query.index_name else "eth_denver"
@@ -202,6 +204,7 @@ class StructuredSearchEngine:
                 temperature=1.5,
                 timeout=60,
             )
+            logging.info("Response 1: %s", output)
             output_json = output.json()
             output_dict = json.loads(output_json)
             text = output_dict['choices'][0]['message']['content']
@@ -229,6 +232,7 @@ class StructuredSearchEngine:
                 ],
                 temperature=0,
             )
+            logging.info("Response 2: %s", output2)
             output2_json = output2.json()
             output2_dict = json.loads(output2_json)
             answear = {}
