@@ -302,7 +302,6 @@ class StructuredSearchEngine:
         return text
 
     def get_output2(self, i, text):
-        answears = []
         client_ai = self.get_client_ai
         output2 = client_ai.chat.completions.create(
             model="gpt-4-turbo",
@@ -327,17 +326,13 @@ class StructuredSearchEngine:
             ],
             temperature=0,
         )
-
-        logging.info("Response 2: %s", output2)
-        print(f"OUTPUT2: {output2}")
         output2_json = output2.json()
         output2_dict = json.loads(output2_json)
         answear = {}
         answear['item_id'] = i
         answear['text'] = output2_dict['choices'][0]['message']['content']
         answear['text'] = answear['text'].replace('"', '')
-        answears.append(answear)
-        return answears
+        return answear
 
     def get_ranked_docs(self, answears, index_name, body):
         response = self.search_client.search(index=index_name, body=body)
