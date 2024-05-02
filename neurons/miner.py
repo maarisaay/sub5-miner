@@ -161,87 +161,16 @@ class Miner(BaseMinerNeuron):
             f"received SemanticSearchSynapse... timeout:{query.timeout}s ", query
         )
         self.check_version(query)
-        body = self.structured_search_engine.vector_search(query)
+        # body = self.structured_search_engine.vector_search(query)
 
-        load_dotenv()
-        api_key = os.environ.get("OPENAI_API_KEY")
-        client_ai = OpenAI(api_key=api_key)
-
-        answears = []
-        for i, doc in enumerate(body):
-            prompt = (
-                "You are a crypto researcher, and you will be given speaker transcript as your source of knowledge in ETH Denver 2024. "
-                "Your job is to look for a question about the speaker and text 5 answers that can be answered"
-                "Transcript:\n\n"
-            )
-            prompt += str(doc)
-            prompt += (
-                # "Provide the question in less than 15 words. "
-                "Please give the question text only, without any additional context or explanation."
-                "Answear in JSON format of {'text': [list of 5 answears]}"
-            )
-            output = client_ai.chat.completions.create(
-                model="gpt-4-turbo",
-                # response_format={"type": "json_object"},
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                temperature=0,
-                timeout=60,
-            )
-            # logging.info("Response 1: %s", output)
-            # print(f"OUTPUT: {output}")
-            output_json = output.json()
-            output_dict = json.loads(output_json)
-            text = output_dict['choices'][0]['message']['content']
-
-            bt.logging.info(f"TEXT: {text}")
-
-            output2 = client_ai.chat.completions.create(
-                model="gpt-4-turbo",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": """Below are the metrics and definitions:
-                                                                            outdated: Time-sensitive information that is no longer current or relevant.
-                                                                            insightless: Superficial content lacking depth and comprehensive insights.
-                                                                            somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
-                                                                            Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
-                    },
-                    {
-                        "role": "system",
-                        "content": f"Current Time: {datetime.now().isoformat().split('T')[0]}",
-                    },
-                    {
-                        "role": "user",
-                        "content": "You will be given a list with 5 answears. Use the metric choices [off topic, somewhat relevant, relevant] to evaluate answears. Return answear with metric relevant if it exists, if not choose the best one from answears with somewhat relevant metric. Please give choosen answear only, without any additional context or explanation. The answears are as follows:\n"
-                                   + text,
-                    },
-                ],
-                temperature=0,
-            )
-            output2_json = output2.json()
-            output2_dict = json.loads(output2_json)
-            answear = {}
-            answear['item_id'] = i
-            answear['text'] = output2_dict['choices'][0]['message']['content']
-            answear['text'] = answear['text'].replace('"', '')
-            # answear = search_engine.get_output2(i, text)
-            answears.append(answear['text'])
-
-        bt.logging.info(f"ANSWEARS: {answears}")
-        bt.logging.info(f"QUERY_INDEX: {query.index_name}")
-        bt.logging.info(f"BODY: {body[0]}")
-        # ranked_docs = self.structured_search_engine.vector_search(query, body)
-        response = self.structured_search_engine.search_client.search(index=query.index_name, body=body[0])
-        bt.logging.info(f"RESPONSE {response}")
-        ranked_docs = [doc["_source"] for doc in response["hits"]["hits"]]
         # ranked_docs = search_engine.get_ranked_docs(answears, query.index_name, body)
 
-        # ranked_docs = self.structured_search_engine.vector_search(query)
+        response = self.structured_search_engine.vector_search(query)
+
+        answears = response[0]
+        ranked_docs = response[1]
+        bt.logging.info(f"ANSWEARS: {answears}")
+        bt.logging.info(f"RANKED DOCS: {ranked_docs}")
 
         for i, item in enumerate(ranked_docs):
             item['text'] = answears[i]['text']
