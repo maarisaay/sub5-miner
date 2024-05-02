@@ -32,10 +32,10 @@ class StructuredSearchEngine:
 
         # optional, for crawling data
         self.twitter_crawler = twitter_crawler
-        self.get_output1()
-        self.get_output2()
-        self.get_client_ai()
-        self.get_ranked_docs()
+        # self.get_output1()
+        # self.get_output2()
+        # self.get_client_ai()
+        # self.get_ranked_docs()
 
     def twitter_doc_mapper(cls, doc):
         return {
@@ -298,8 +298,8 @@ class StructuredSearchEngine:
             temperature=0,
             timeout=60,
         )
-        logging.info("Response 1: %s", output)
-        print(f"OUTPUT: {output}")
+        # logging.info("Response 1: %s", output)
+        # print(f"OUTPUT: {output}")
         output_json = output.json()
         output_dict = json.loads(output_json)
         text = output_dict['choices'][0]['message']['content']

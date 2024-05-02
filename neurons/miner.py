@@ -156,22 +156,27 @@ class Miner(BaseMinerNeuron):
         self, query: SemanticSearchSynapse
     ) -> SemanticSearchSynapse:
 
+        search_engine = StructuredSearchEngine(search_client=self.search_client,
+            relevance_ranking_model=self.ranking_model,
+            twitter_crawler=self.twitter_crawler,
+            recall_size=self.config.neuron.search_recall_size,)
+
         start_time = datetime.now()
         bt.logging.info(
             f"received SemanticSearchSynapse... timeout:{query.timeout}s ", query
         )
         self.check_version(query)
         bt.logging.info(f"QUERY: {query}")
-        body = self.structured_search_engine.vector_search(query)
+        body = search_engine.vector_search(query)
         bt.logging.info(f"BODY: {body}, body type: {type(body)}")
         answears = []
         for i, doc in enumerate(body):
-            text = self.structured_search_engine.get_output1(doc['text'])
+            text = search_engine.get_output1(doc['text'])
             bt.logging.info(f"TEXT: {text}")
-            answear = self.structured_search_engine.get_output2(i, text)
+            answear = search_engine.get_output2(i, text)
             answears.append(answear['text'])
         bt.logging.info(f"ANSWEARS: {answears}")
-        ranked_docs = self.get_ranked_docs(answears, query.index_name, body)
+        ranked_docs = search_engine.get_ranked_docs(answears, query.index_name, body)
 
         # ranked_docs = self.structured_search_engine.vector_search(query)
 
