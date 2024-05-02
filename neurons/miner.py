@@ -26,8 +26,6 @@ import bittensor as bt
 from dotenv import load_dotenv
 from elasticsearch import Elasticsearch
 import logging
-from ..utils.embeddings import pad_tensor, text_embedding, MAX_EMBEDDING_DIM
-
 
 import openkaito
 from openkaito.base.miner import BaseMinerNeuron
@@ -40,6 +38,7 @@ from openkaito.protocol import (
 from openkaito.search.ranking import HeuristicRankingModel
 from openkaito.search.structured_search_engine import StructuredSearchEngine
 from openkaito.utils.version import compare_version, get_version
+from openkaito.utils.embeddings import pad_tensor, text_embedding, MAX_EMBEDDING_DIM
 
 
 class Miner(BaseMinerNeuron):
