@@ -32,6 +32,10 @@ class StructuredSearchEngine:
 
         # optional, for crawling data
         self.twitter_crawler = twitter_crawler
+        self.get_output1()
+        self.get_output2()
+        self.get_client_ai()
+        self.get_ranked_docs()
 
     def twitter_doc_mapper(cls, doc):
         return {
