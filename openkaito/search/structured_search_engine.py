@@ -167,6 +167,7 @@ class StructuredSearchEngine:
 
         embedding = text_embedding(query_string)[0]
         embedding = pad_tensor(embedding, max_len=MAX_EMBEDDING_DIM)
+        body = {}
         body = {
             "knn": {
                 "field": "embedding",

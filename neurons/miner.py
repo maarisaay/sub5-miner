@@ -165,7 +165,7 @@ class Miner(BaseMinerNeuron):
         body = self.structured_search_engine.vector_search(query)
         bt.logging.info(f"BODY: {body}, body type: {type(body)}")
         answears = []
-        for i, doc in enumerate(body["knn"]["query_vector"]):
+        for i, doc in enumerate(body):
             text = self.structured_search_engine.get_output1(doc)
             bt.logging.info(f"TEXT: {text}")
             answears = self.structured_search_engine.get_output2(i, text)
