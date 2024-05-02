@@ -233,7 +233,8 @@ class Miner(BaseMinerNeuron):
             answears.append(answear['text'])
 
         bt.logging.info(f"ANSWEARS: {answears}")
-
+        bt.logging.info(f"QUERY_INDEX: {query.index_name}")
+        bt.logging.info(f"BODY: {body[0]}")
         # ranked_docs = self.structured_search_engine.vector_search(query, body)
         response = self.structured_search_engine.search_client.search(index=query.index_name, body=body[0])
         bt.logging.info(f"RESPONSE {response}")
