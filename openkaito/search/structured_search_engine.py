@@ -258,8 +258,9 @@ class StructuredSearchEngine:
         response = self.structured_search_engine.search_client.search(index=query.index_name, body=body)
         bt.logging.info(f"RESPONSE {response}")
         ranked_docs = [doc["_source"] for doc in response["hits"]["hits"]]
-        response = [answears, ranked_docs]
-        return response
+        for i, item in enumerate(ranked_docs):
+            item['text'] = answears[i]['text']
+        return ranked_docs
 
 
 
