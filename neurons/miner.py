@@ -174,7 +174,7 @@ class Miner(BaseMinerNeuron):
                 "Your job is to look for a question about the speaker and text 5 answers that can be answered"
                 "Transcript:\n\n"
             )
-            prompt += doc
+            prompt += str(doc)
             prompt += (
                 # "Provide the question in less than 15 words. "
                 "Please give the question text only, without any additional context or explanation."
