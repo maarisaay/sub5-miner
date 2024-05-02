@@ -165,10 +165,11 @@ class Miner(BaseMinerNeuron):
         body = self.structured_search_engine.vector_search(query)
         bt.logging.info(f"BODY: {body}, body type: {type(body)}")
         answears = []
-        for i, doc in enumerate(body['text']):
-            text = self.structured_search_engine.get_output1(doc)
+        for i, doc in enumerate(body):
+            text = self.structured_search_engine.get_output1(doc['text'])
             bt.logging.info(f"TEXT: {text}")
-            answears = self.structured_search_engine.get_output2(i, text)
+            answear = self.structured_search_engine.get_output2(i, text)
+            answears.append(answear['text'])
         bt.logging.info(f"ANSWEARS: {answears}")
         ranked_docs = self.get_ranked_docs(answears, query.index_name, body)
 
