@@ -159,12 +159,8 @@ class StructuredSearchEngine:
 
 
 
-    def vector_search(self, query, output2):
-        load_dotenv()
-        api_key = os.environ.get("OPENAI_API_KEY")
-        base_url = "https://chat.openai.com/g/g-xEh6jyzw1-subnet-5"
-        client_ai = OpenAI(api_key=api_key)
-        logging.basicConfig(filename='openai.log', level=logging.INFO)
+    def vector_search(self, query):
+        # client_ai = self.get_client_ai()
         topk = query.size
         query_string = query.query_string
         index_name = query.index_name if query.index_name else "eth_denver"
@@ -182,92 +178,173 @@ class StructuredSearchEngine:
                 "excludes": ["embedding"],
             },
         }
+        return body
 
-        answears = []
-        for i, doc in enumerate(body["knn"]["query_vector"]):
-            prompt = (
-                "You are a crypto researcher, and you will be given speaker transcript as your source of knowledge in ETH Denver 2024. "
-                "Your job is to look for a question about the speaker and text 5 answers that can be answered"
-                "Transcript:\n\n"
-            )
-            prompt += doc
-            prompt += (
-                # "Provide the question in less than 15 words. "
-                "Please give the question text only, without any additional context or explanation."
-                "Answear in JSON format of {'text': [list of 5 answears]}"
-            )
-            output = client_ai.chat.completions.create(
-                model="gpt-4-turbo",
-                # response_format={"type": "json_object"},
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                temperature=0,
-                timeout=60,
-            )
-            logging.info("Response 1: %s", output)
-            print(f"OUTPUT: {output}")
-            output_json = output.json()
-            output_dict = json.loads(output_json)
-            text = output_dict['choices'][0]['message']['content']
+        # answears = []
+        # for i, doc in enumerate(body["knn"]["query_vector"]):
+            # prompt = (
+            #     "You are a crypto researcher, and you will be given speaker transcript as your source of knowledge in ETH Denver 2024. "
+            #     "Your job is to look for a question about the speaker and text 5 answers that can be answered"
+            #     "Transcript:\n\n"
+            # )
+            # prompt += doc
+            # prompt += (
+            #     # "Provide the question in less than 15 words. "
+            #     "Please give the question text only, without any additional context or explanation."
+            #     "Answear in JSON format of {'text': [list of 5 answears]}"
+            # )
+            # output = client_ai.chat.completions.create(
+            #     model="gpt-4-turbo",
+            #     # response_format={"type": "json_object"},
+            #     messages=[
+            #         {
+            #             "role": "user",
+            #             "content": prompt,
+            #         }
+            #     ],
+            #     temperature=0,
+            #     timeout=60,
+            # )
+            # logging.info("Response 1: %s", output)
+            # print(f"OUTPUT: {output}")
+            # output_json = output.json()
+            # output_dict = json.loads(output_json)
+            # text = output_dict['choices'][0]['message']['content']
 
-            load_dotenv()
-            api_key = os.environ.get("OPENAI_API_KEY")
-            base_url = "https://chat.openai.com/g/g-xEh6jyzw1-subnet-5"
-            client_ai = OpenAI(api_key=api_key)
+            # load_dotenv()
+            # api_key = os.environ.get("OPENAI_API_KEY")
+            # base_url = "https://chat.openai.com/g/g-xEh6jyzw1-subnet-5"
+            # client_ai = OpenAI(api_key=api_key)
+            #
+            # output2 = client_ai.chat.completions.create(
+            #     model="gpt-4-turbo",
+            #     messages=[
+            #         {
+            #             "role": "system",
+            #             "content": """Below are the metrics and definitions:
+            #                                             outdated: Time-sensitive information that is no longer current or relevant.
+            #                                             insightless: Superficial content lacking depth and comprehensive insights.
+            #                                             somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
+            #                                             Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
+            #         },
+            #         {
+            #             "role": "system",
+            #             "content": f"Current Time: {datetime.now().isoformat().split('T')[0]}",
+            #         },
+            #         {
+            #             "role": "user",
+            #             "content": "You will be given a list with 5 answears. Use the metric choices [off topic, somewhat relevant, relevant] to evaluate answears. Return answear with metric relevant if it exists, if not choose the best one from answears with somewhat relevant metric. Please give choosen answear only, without any additional context or explanation. The answears are as follows:\n"
+            #                        + text,
+            #         },
+            #     ],
+            #     temperature=0,
+            # )
+            #
+            # logging.info("Response 2: %s", output2)
+            # print(f"OUTPUT2: {output2}")
+            # output2_json = output2.json()
+            # output2_dict = json.loads(output2_json)
+            # answear = {}
+            # answear['item_id'] = i
+            # answear['text'] = output2_dict['choices'][0]['message']['content']
+            # answear['text'] = answear['text'].replace('"', '')
+            # answears.append(answear)
 
-            output2 = client_ai.chat.completions.create(
-                model="gpt-4-turbo",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": """Below are the metrics and definitions:
-                                                        outdated: Time-sensitive information that is no longer current or relevant.
-                                                        insightless: Superficial content lacking depth and comprehensive insights.
-                                                        somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
-                                                        Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
-                    },
-                    {
-                        "role": "system",
-                        "content": f"Current Time: {datetime.now().isoformat().split('T')[0]}",
-                    },
-                    {
-                        "role": "user",
-                        "content": "You will be given a list with 5 answears. Use the metric choices [off topic, somewhat relevant, relevant] to evaluate answears. Return answear with metric relevant if it exists, if not choose the best one from answears with somewhat relevant metric. Please give choosen answear only, without any additional context or explanation. The answears are as follows:\n"
-                                   + text,
-                    },
-                ],
-                temperature=0,
-            )
-            return output2
-
-            logging.info("Response 2: %s", output2)
-            print(f"OUTPUT2: {output2}")
-            output2_json = output2.json()
-            output2_dict = json.loads(output2_json)
-            answear = {}
-            answear['item_id'] = i
-            answear['text'] = output2_dict['choices'][0]['message']['content']
-            answear['text'] = answear['text'].replace('"', '')
-            answears.append(answear)
-
-        response = self.search_client.search(index=index_name, body=body)
-        ranked_docs = [doc["_source"] for doc in response["hits"]["hits"]]
-        for i, item in enumerate(ranked_docs):
-            item['text'] = answears[i]['text']
-        # optional: you may implement yourselves additional post-processing filtering/ranking here
-        return ranked_docs
+        # response = self.search_client.search(index=index_name, body=body)
+        # ranked_docs = [doc["_source"] for doc in response["hits"]["hits"]]
+        # for i, item in enumerate(ranked_docs):
+        #     item['text'] = answears[i]['text']
+        # # optional: you may implement yourselves additional post-processing filtering/ranking here
+        # return ranked_docs
 
     # def vector_search_test(self, text):
     #
     #
     # def vector_search_test2(self, output2):
 
+    def get_client_ai(self):
+        load_dotenv()
+        api_key = os.environ.get("OPENAI_API_KEY")
+        client_ai = OpenAI(api_key=api_key)
+        return client_ai
 
+    def get_output1(self, doc):
+        client_ai = self.get_client_ai()
+        prompt = (
+            "You are a crypto researcher, and you will be given speaker transcript as your source of knowledge in ETH Denver 2024. "
+            "Your job is to look for a question about the speaker and text 5 answers that can be answered"
+            "Transcript:\n\n"
+        )
+        prompt += doc
+        prompt += (
+            # "Provide the question in less than 15 words. "
+            "Please give the question text only, without any additional context or explanation."
+            "Answear in JSON format of {'text': [list of 5 answears]}"
+        )
+        output = client_ai.chat.completions.create(
+            model="gpt-4-turbo",
+            # response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            temperature=0,
+            timeout=60,
+        )
+        logging.info("Response 1: %s", output)
+        print(f"OUTPUT: {output}")
+        output_json = output.json()
+        output_dict = json.loads(output_json)
+        text = output_dict['choices'][0]['message']['content']
+        return text
 
+    def get_output2(self, i, text):
+        answears = []
+        client_ai = self.get_client_ai
+        output2 = client_ai.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """Below are the metrics and definitions:
+                                                                outdated: Time-sensitive information that is no longer current or relevant.
+                                                                insightless: Superficial content lacking depth and comprehensive insights.
+                                                                somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
+                                                                Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
+                },
+                {
+                    "role": "system",
+                    "content": f"Current Time: {datetime.now().isoformat().split('T')[0]}",
+                },
+                {
+                    "role": "user",
+                    "content": "You will be given a list with 5 answears. Use the metric choices [off topic, somewhat relevant, relevant] to evaluate answears. Return answear with metric relevant if it exists, if not choose the best one from answears with somewhat relevant metric. Please give choosen answear only, without any additional context or explanation. The answears are as follows:\n"
+                               + text,
+                },
+            ],
+            temperature=0,
+        )
+
+        logging.info("Response 2: %s", output2)
+        print(f"OUTPUT2: {output2}")
+        output2_json = output2.json()
+        output2_dict = json.loads(output2_json)
+        answear = {}
+        answear['item_id'] = i
+        answear['text'] = output2_dict['choices'][0]['message']['content']
+        answear['text'] = answear['text'].replace('"', '')
+        answears.append(answear)
+        return answears
+
+    def get_ranked_docs(self, answears, index_name, body):
+        response = self.search_client.search(index=index_name, body=body)
+        ranked_docs = [doc["_source"] for doc in response["hits"]["hits"]]
+        for i, item in enumerate(ranked_docs):
+            item['text'] = answears[i]['text']
+        # optional: you may implement yourselves additional post-processing filtering/ranking here
+        return ranked_docs
     def crawl_and_index_data(self, query_string, author_usernames, max_size):
         """
         Crawls the data from the twitter crawler and indexes it in the elasticsearch database.
