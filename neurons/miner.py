@@ -160,17 +160,12 @@ class Miner(BaseMinerNeuron):
         api_key = os.environ.get("OPENAI_API_KEY")
         client_ai = OpenAI(api_key=api_key)
 
-        search_engine = StructuredSearchEngine(search_client=self.search_client,
-            relevance_ranking_model=self.ranking_model,
-            twitter_crawler=self.twitter_crawler,
-            recall_size=self.config.neuron.search_recall_size,)
-
         start_time = datetime.now()
         bt.logging.info(
             f"received SemanticSearchSynapse... timeout:{query.timeout}s ", query
         )
         self.check_version(query)
-        body = search_engine.vector_search(query)
+        body = self.structured_search_engine.vector_search(query)
 
         answears = []
         for i, doc in enumerate(body):
@@ -239,8 +234,8 @@ class Miner(BaseMinerNeuron):
 
         bt.logging.info(f"ANSWEARS: {answears}")
 
-        ranked_docs = search_engine.vector_search(query, body)
-        ranked_docs = search_engine.get_ranked_docs(answears, query.index_name, body)
+        ranked_docs = self.structured_search_engine.vector_search(query, body)
+        # ranked_docs = search_engine.get_ranked_docs(answears, query.index_name, body)
 
         # ranked_docs = self.structured_search_engine.vector_search(query)
 
