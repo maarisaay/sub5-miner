@@ -261,10 +261,10 @@ class StructuredSearchEngine:
     #     # optional: you may implement yourselves additional post-processing filtering/ranking here
     #     return ranked_docs
 
-    def vector_search_test(self, text):
-
-
-    def vector_search_test2(self, output2):
+    # def vector_search_test(self, text):
+    #
+    #
+    # def vector_search_test2(self, output2):
 
 
 
