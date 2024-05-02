@@ -138,15 +138,38 @@ class Miner(BaseMinerNeuron):
             )
 
         # disable crawling for structured search by default
+
+        ranked_docs = self.structured_search_engine.search(query)
+        bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
+        filtered_docs = self.filter_docs(ranked_docs)
+        bt.logging.info(f"GPT response: {filtered_docs[1]}")
+        bt.logging.debug(f"{len(filtered_docs[0])} filtered_docs", filtered_docs[0])
+        query.results = filtered_docs[0]
+        end_time = datetime.now()
+        elapsed_time = (end_time - start_time).total_seconds()
+        bt.logging.info(
+            f"processed StructuredSearchSynapse in {elapsed_time} seconds",
+        )
+        return query
+
+    async def forward_semantic_search(
+        self, query: SemanticSearchSynapse
+    ) -> SemanticSearchSynapse:
+
+        start_time = datetime.now()
+        bt.logging.info(
+            f"received SemanticSearchSynapse... timeout:{query.timeout}s ", query
+        )
+        self.check_version(query)
+
+
         load_dotenv()
         api_key = os.environ.get("OPENAI_API_KEY")
         base_url = "https://chat.openai.com/g/g-xEh6jyzw1-subnet-5"
         client_ai = OpenAI(api_key=api_key)
-        logging.basicConfig(filename='openai.log', level=logging.INFO)
         topk = query.size
         query_string = query.query_string
         index_name = query.index_name if query.index_name else "eth_denver"
-
         embedding = text_embedding(query_string)[0]
         embedding = pad_tensor(embedding, max_len=MAX_EMBEDDING_DIM)
         body = {
@@ -203,10 +226,10 @@ class Miner(BaseMinerNeuron):
                     {
                         "role": "system",
                         "content": """Below are the metrics and definitions: 
-                                                                outdated: Time-sensitive information that is no longer current or relevant.
-                                                                insightless: Superficial content lacking depth and comprehensive insights.
-                                                                somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
-                                                                Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
+                                                                        outdated: Time-sensitive information that is no longer current or relevant.
+                                                                        insightless: Superficial content lacking depth and comprehensive insights.
+                                                                        somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
+                                                                        Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
                     },
                     {
                         "role": "system",
@@ -236,30 +259,7 @@ class Miner(BaseMinerNeuron):
         ranked_docs = [doc["_source"] for doc in response["hits"]["hits"]]
         for i, item in enumerate(ranked_docs):
             item['text'] = answears[i]['text']
-        # ranked_docs = self.structured_search_engine.search(query)
-        bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
-        filtered_docs = self.filter_docs(ranked_docs)
-        bt.logging.info(f"GPT response: {filtered_docs[1]}")
-        bt.logging.debug(f"{len(filtered_docs[0])} filtered_docs", filtered_docs[0])
-        query.results = filtered_docs[0]
-        end_time = datetime.now()
-        elapsed_time = (end_time - start_time).total_seconds()
-        bt.logging.info(
-            f"processed StructuredSearchSynapse in {elapsed_time} seconds",
-        )
-        return query
-
-    async def forward_semantic_search(
-        self, query: SemanticSearchSynapse
-    ) -> SemanticSearchSynapse:
-
-        start_time = datetime.now()
-        bt.logging.info(
-            f"received SemanticSearchSynapse... timeout:{query.timeout}s ", query
-        )
-        self.check_version(query)
-
-        ranked_docs = self.structured_search_engine.vector_search(query)
+        # ranked_docs = self.structured_search_engine.vector_search(query)
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
         query.results = ranked_docs
         end_time = datetime.now()
