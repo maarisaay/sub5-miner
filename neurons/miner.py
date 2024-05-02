@@ -161,8 +161,9 @@ class Miner(BaseMinerNeuron):
             f"received SemanticSearchSynapse... timeout:{query.timeout}s ", query
         )
         self.check_version(query)
-
+        bt.logging.info(f"QUERY: {query}")
         body = self.structured_search_engine.vector_search(query)
+        bt.logging.info(f"BODY: {body}, body type: {type(body)}")
         answears = []
         for i, doc in enumerate(body["knn"]["query_vector"]):
             text = self.structured_search_engine.get_output1(doc)
