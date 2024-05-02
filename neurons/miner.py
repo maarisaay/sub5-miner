@@ -142,8 +142,8 @@ class Miner(BaseMinerNeuron):
         ranked_docs = self.structured_search_engine.search(query)
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
         filtered_docs = self.filter_docs(ranked_docs)
-        bt.logging.info(f"GPT response: {filtered_docs[1]}")
-        bt.logging.debug(f"{len(filtered_docs[0])} filtered_docs", filtered_docs[0])
+        # bt.logging.info(f"GPT response: {filtered_docs[1]}")
+        # bt.logging.debug(f"{len(filtered_docs[0])} filtered_docs", filtered_docs[0])
         query.results = filtered_docs[0]
         end_time = datetime.now()
         elapsed_time = (end_time - start_time).total_seconds()
@@ -156,6 +156,10 @@ class Miner(BaseMinerNeuron):
         self, query: SemanticSearchSynapse
     ) -> SemanticSearchSynapse:
 
+        load_dotenv()
+        api_key = os.environ.get("OPENAI_API_KEY")
+        client_ai = OpenAI(api_key=api_key)
+
         search_engine = StructuredSearchEngine(search_client=self.search_client,
             relevance_ranking_model=self.ranking_model,
             twitter_crawler=self.twitter_crawler,
@@ -166,19 +170,82 @@ class Miner(BaseMinerNeuron):
             f"received SemanticSearchSynapse... timeout:{query.timeout}s ", query
         )
         self.check_version(query)
-        bt.logging.info(f"QUERY: {query}")
         body = search_engine.vector_search(query)
-        bt.logging.info(f"BODY: {body}, body type: {type(body)}")
+
         answears = []
         for i, doc in enumerate(body):
-            text = search_engine.get_output1(doc['text'])
+            prompt = (
+                "You are a crypto researcher, and you will be given speaker transcript as your source of knowledge in ETH Denver 2024. "
+                "Your job is to look for a question about the speaker and text 5 answers that can be answered"
+                "Transcript:\n\n"
+            )
+            prompt += doc
+            prompt += (
+                # "Provide the question in less than 15 words. "
+                "Please give the question text only, without any additional context or explanation."
+                "Answear in JSON format of {'text': [list of 5 answears]}"
+            )
+            output = client_ai.chat.completions.create(
+                model="gpt-4-turbo",
+                # response_format={"type": "json_object"},
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+                temperature=0,
+                timeout=60,
+            )
+            # logging.info("Response 1: %s", output)
+            # print(f"OUTPUT: {output}")
+            output_json = output.json()
+            output_dict = json.loads(output_json)
+            text = output_dict['choices'][0]['message']['content']
+
             bt.logging.info(f"TEXT: {text}")
-            answear = search_engine.get_output2(i, text)
+
+            output2 = client_ai.chat.completions.create(
+                model="gpt-4-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": """Below are the metrics and definitions:
+                                                                            outdated: Time-sensitive information that is no longer current or relevant.
+                                                                            insightless: Superficial content lacking depth and comprehensive insights.
+                                                                            somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
+                                                                            Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
+                    },
+                    {
+                        "role": "system",
+                        "content": f"Current Time: {datetime.now().isoformat().split('T')[0]}",
+                    },
+                    {
+                        "role": "user",
+                        "content": "You will be given a list with 5 answears. Use the metric choices [off topic, somewhat relevant, relevant] to evaluate answears. Return answear with metric relevant if it exists, if not choose the best one from answears with somewhat relevant metric. Please give choosen answear only, without any additional context or explanation. The answears are as follows:\n"
+                                   + text,
+                    },
+                ],
+                temperature=0,
+            )
+            output2_json = output2.json()
+            output2_dict = json.loads(output2_json)
+            answear = {}
+            answear['item_id'] = i
+            answear['text'] = output2_dict['choices'][0]['message']['content']
+            answear['text'] = answear['text'].replace('"', '')
+            # answear = search_engine.get_output2(i, text)
             answears.append(answear['text'])
+
         bt.logging.info(f"ANSWEARS: {answears}")
+
+        ranked_docs = search_engine.vector_search(query, body)
         ranked_docs = search_engine.get_ranked_docs(answears, query.index_name, body)
 
         # ranked_docs = self.structured_search_engine.vector_search(query)
+
+        for i, item in enumerate(ranked_docs):
+            item['text'] = answears[i]['text']
 
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
         query.results = ranked_docs
@@ -287,7 +354,7 @@ class Miner(BaseMinerNeuron):
                                + "{'results': [{'item_id': the item id of choice, e.g. 0, 'reason': a very short explanation of your choice, 'choice':The choice of answer. }, {'item_id': 1, 'reason': explanation, 'choice': answer } , ... ] } ",
                 },
             ],
-            model="gpt-4-turbo"
+            model="gpt-3.5-turbo"
         )
 
         content_string = chat_completion.choices[0].message.content
