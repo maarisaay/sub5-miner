@@ -156,16 +156,16 @@ class Miner(BaseMinerNeuron):
         self, query: SemanticSearchSynapse
     ) -> SemanticSearchSynapse:
 
-        load_dotenv()
-        api_key = os.environ.get("OPENAI_API_KEY")
-        client_ai = OpenAI(api_key=api_key)
-
         start_time = datetime.now()
         bt.logging.info(
             f"received SemanticSearchSynapse... timeout:{query.timeout}s ", query
         )
         self.check_version(query)
         body = self.structured_search_engine.vector_search(query)
+
+        load_dotenv()
+        api_key = os.environ.get("OPENAI_API_KEY")
+        client_ai = OpenAI(api_key=api_key)
 
         answears = []
         for i, doc in enumerate(body):
