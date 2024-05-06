@@ -297,7 +297,7 @@ class StructuredSearchEngine:
         bt.logging.info(f"RESPONSE {response}")
         ranked_docs = [doc["_source"] for doc in response["hits"]["hits"]]
         for i in enumerate(ranked_docs):
-            ranked_docs[i]['text'] = answears[i]
+            ranked_docs[i]['text'] = "Text: " + answears[i]
         return ranked_docs
 
 
