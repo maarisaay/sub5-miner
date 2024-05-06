@@ -298,7 +298,8 @@ class StructuredSearchEngine:
         ranked_docs = [doc["_source"] for doc in response["hits"]["hits"]]
         for i, item in enumerate(ranked_docs):
             item['text'] = answears[i]
-        return ranked_docs
+        list = [response, answears, ranked_docs]
+        return list
 
 
 
