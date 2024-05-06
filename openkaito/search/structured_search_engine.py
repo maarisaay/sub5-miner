@@ -7,6 +7,7 @@ import json
 from openai import OpenAI
 from datetime import datetime
 import logging
+import re
 
 
 from ..utils.embeddings import pad_tensor, text_embedding, MAX_EMBEDDING_DIM
@@ -193,42 +194,55 @@ class StructuredSearchEngine:
                 "Your job is to look for a question about the speaker and text 5 answers that can be answered"
                 "Transcript:\n\n"
             )
-            prompt += str(doc)
+            prompt += doc['text']
             prompt += (
-                # "Provide the question in less than 15 words. "
+                "Provide the question in less than 30 words. "
                 "Please give the answear text only (no questions), without any additional context or explanation. Your answear must be Insightful: Comprehensive, insightful content suitable for informed decision-making. Don't write anything off topic."
-                "Answear in JSON format of {'text': [list of 5 answears]}"
+                """Answear in JSON format of {'text': ["answear 1", "answear2", ... ]}"""
+                # "Answear in JSOM format"
             )
             output = client_ai.chat.completions.create(
                 model="gpt-4-turbo",
-                # response_format={"type": "json_object"},
                 messages=[
                     {
                         "role": "user",
                         "content": prompt,
+                    },
+                    {
+                        "role": "system",
+                        "content": "Please provide the response in JSON format.",
                     }
                 ],
-                temperature=0,
+                response_format={"type": "json_object"},
+                temperature=1.5,
                 timeout=60,
             )
-            # logging.info("Response 1: %s", output)
-            # print(f"OUTPUT: {output}")
-            output_json = output.json()
-            output_dict = json.loads(output_json)
-            text = output_dict['choices'][0]['message']['content']
+            output_string = output.choices[0].message.content
+            start_index = output_string.find('"text": [') + len('"text": ')
+            end_index = output_string.find(']', start_index)
+            list_string = output_string[start_index - 1:end_index + 1]
 
-            bt.logging.info(f"TEXT: {text}")
+            try:
+                text_list = json.loads(list_string)
+            except:
+                json_str = re.sub(r'\s+', ' ', list_string).strip()
+                json_str = re.sub(r'(?<=")(?!\s*,)(?!\s*\])', ',', json_str)
+                json_str = re.sub(r'(?<=")(?!\s*,)(?!\s*\])', ',', json_str)
+                json_str = re.sub(r'(?<=")(?!\s*,)(?!\s*\])', ',', json_str)
+                json_str = re.sub(r'(?<=\")([^\"]*?)\s*$', r'\1"', json_str)
+
+                text_list = json.loads(json_str)
 
             output2 = client_ai.chat.completions.create(
                 model="gpt-4-turbo",
+                # response_format={"type": "json_object"},
                 messages=[
                     {
                         "role": "system",
                         "content": """Below are the metrics and definitions:
-                         outdated: Time-sensitive information that is no longer current or relevant.
-                         insightless: Superficial content lacking depth and comprehensive insights.
-                         somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
-                         Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
+                                    off topic: Superficial or unrelevant content that can not answer the given question.
+                                    somewhat relevant: Offers partial insight to partially answer the given question.
+                                    relevant: Comprehensive, insightful content suitable for answering the given question.""",
                     },
                     {
                         "role": "system",
@@ -236,20 +250,44 @@ class StructuredSearchEngine:
                     },
                     {
                         "role": "user",
-                        "content": "You will be given a list with 5 answears. Use the metric choices [off topic, somewhat relevant, relevant] to evaluate answears. Return answear with metric relevant if it exists, if not choose the best one from answears with somewhat relevant metric. Please give choosen answear only, without any additional context or explanation. The answears are as follows:\n"
-                                   + text,
+                        "content": f"You will be given a list with 5 answears. Use the metric choices [off topic, somewhat relevant, relevant] to evaluate answears. Return answear with metric. The answears are as follows:\n"
+                                   + str(text_list),
+                    },
+                    {
+                        "role": "user",
+                        "content": "Must answer in JSON format of a list of choices with item ids for all the given items: "
+                                   + "{'results': [{'item_id': the item id of choice, e.g. 0, 'reason': a very short explanation of your choice, 'choice':The choice of answer. }, {'item_id': 1, 'reason': explanation, 'choice': answer } , ... ]}",
                     },
                 ],
                 temperature=0,
             )
-            output2_json = output2.json()
-            output2_dict = json.loads(output2_json)
-            answear = {}
-            answear['item_id'] = i
-            answear['text'] = output2_dict['choices'][0]['message']['content']
-            answear['text'] = answear['text'].replace('"', '')
-            # answear = search_engine.get_output2(i, text)
-            answears.append(answear['text'])
+
+            output2_string = output2.choices[0].message.content
+            try:
+                output2_json = json.loads(output2_string)
+            except:
+                start_index = output2_string.find('{"results":') + len('{"results": ')
+                end_index = output2_string.find('} ] }', start_index)
+                list_string = "{" + output2_string[start_index:end_index - 5] + "}"
+                output2_json = json.loads(list_string)
+            print(output2_json)
+            chosen_text = ""
+            for i, content in enumerate(output2_json['results']):
+                if content['choice'] == "relevant":
+                    chosen_text = text_list[i]
+                    break
+            if chosen_text == "":
+                for i, content in enumerate(output2_json['results']):
+                    if content['choice'] == "somewhat relevant":
+                        chosen_text = text_list[i]
+                        break
+            if chosen_text == "":
+                for i, content in enumerate(output2_json['results']):
+                    if content['choice'] == "off topic":
+                        chosen_text = text_list[i]
+                        break
+
+            answears.append(chosen_text)
 
         bt.logging.info(f"ANSWEARS: {answears}")
         bt.logging.info(f"QUERY_INDEX: {query.index_name}")
@@ -259,7 +297,7 @@ class StructuredSearchEngine:
         bt.logging.info(f"RESPONSE {response}")
         ranked_docs = [doc["_source"] for doc in response["hits"]["hits"]]
         for i, item in enumerate(ranked_docs):
-            item['text'] = answears[i]['text']
+            item['text'] = answears[i]
         return ranked_docs
 
 
