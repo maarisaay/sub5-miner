@@ -196,7 +196,7 @@ class StructuredSearchEngine:
             prompt += str(doc)
             prompt += (
                 # "Provide the question in less than 15 words. "
-                "Please give the question text only, without any additional context or explanation."
+                "Please give the text only, without any additional context or explanation."
                 "Answear in JSON format of {'text': [list of 5 answears]}"
             )
             output = client_ai.chat.completions.create(
@@ -225,10 +225,10 @@ class StructuredSearchEngine:
                     {
                         "role": "system",
                         "content": """Below are the metrics and definitions:
-                                                                                    outdated: Time-sensitive information that is no longer current or relevant.
-                                                                                    insightless: Superficial content lacking depth and comprehensive insights.
-                                                                                    somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
-                                                                                    Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
+                         outdated: Time-sensitive information that is no longer current or relevant.
+                         insightless: Superficial content lacking depth and comprehensive insights.
+                         somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
+                         Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
                     },
                     {
                         "role": "system",
