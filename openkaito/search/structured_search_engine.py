@@ -196,7 +196,7 @@ class StructuredSearchEngine:
             prompt += str(doc)
             prompt += (
                 # "Provide the question in less than 15 words. "
-                "Please give the text answears only (no questions), without any additional context or explanation."
+                "Please give the answear text only (no questions), without any additional context or explanation. Your answear must be Insightful: Comprehensive, insightful content suitable for informed decision-making. Don't write anything off topic."
                 "Answear in JSON format of {'text': [list of 5 answears]}"
             )
             output = client_ai.chat.completions.create(
