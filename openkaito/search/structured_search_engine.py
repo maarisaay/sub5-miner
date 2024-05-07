@@ -8,6 +8,8 @@ from openai import OpenAI
 from datetime import datetime
 import logging
 import re
+import concurrent.futures
+import requests
 
 
 from ..utils.embeddings import pad_tensor, text_embedding, MAX_EMBEDDING_DIM
@@ -92,9 +94,9 @@ class StructuredSearchEngine:
         )
 
         ranking_model = self.relevance_ranking_model
-        recalled_items[0]['text'] += 'ABC'
+
         results = ranking_model.rank(search_query.query_string, recalled_items)
-        # results[0]['text'] += 'ABC'
+
         return results[:result_size]
 
     def recall(self, search_query, recall_size):
@@ -184,120 +186,53 @@ class StructuredSearchEngine:
             },
         }
 
-        load_dotenv()
-        api_key = os.environ.get("OPENAI_API_KEY")
-        client_ai = OpenAI(api_key=api_key)
-        answears = []
-        for i, doc in enumerate(body):
+        prompts = []
+        for doc in body:
             prompt = (
-                "You are a crypto researcher, and you will be given speaker transcript as your source of knowledge in ETH Denver 2024. "
-                "Your job is to look for a question about the speaker and text 5 answers that can be answered"
-                "Transcript:\n\n"
+                    "You are a crypto researcher, and you will be given speaker transcript as your source of knowledge in ETH Denver 2024. "
+                    "Your job is to look for a question about the speaker and text 5 answers that can be answered"
+                    "Transcript:\n\n"
+                    + doc['text'] +
+                    "Provide the question in less than 30 words. "
+                    "Please give the answear text only (no questions), without any additional context or explanation. Your answear must be Insightful: Comprehensive, insightful content suitable for informed decision-making. Don't write anything off topic."
+                    """Answear in JSON format of {'text': ["answear 1", "answear2", ... ]}"""
             )
-            prompt += doc['text']
-            prompt += (
-                "Provide the question in less than 30 words. "
-                "Please give the answear text only (no questions), without any additional context or explanation. Your answear must be Insightful: Comprehensive, insightful content suitable for informed decision-making. Don't write anything off topic."
-                """Answear in JSON format of {'text': ["answear 1", "answear2", ... ]}"""
-                # "Answear in JSOM format"
-            )
-            output = client_ai.chat.completions.create(
-                model="gpt-4-turbo",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    },
-                    {
-                        "role": "system",
-                        "content": "Please provide the response in JSON format.",
-                    }
-                ],
-                response_format={"type": "json_object"},
-                temperature=1.5,
-                timeout=60,
-            )
-            output_string = output.choices[0].message.content
-            start_index = output_string.find('"text": [') + len('"text": ')
-            end_index = output_string.find(']', start_index)
-            list_string = output_string[start_index - 1:end_index + 1]
+            prompts.append(prompt)
 
-            try:
-                text_list = json.loads(list_string)
-            except:
-                json_str = re.sub(r'\s+', ' ', list_string).strip()
-                json_str = re.sub(r'(?<=")(?!\s*,)(?!\s*\])', ',', json_str)
-                json_str = re.sub(r'(?<=")(?!\s*,)(?!\s*\])', ',', json_str)
-                json_str = re.sub(r'(?<=")(?!\s*,)(?!\s*\])', ',', json_str)
-                json_str = re.sub(r'(?<=\")([^\"]*?)\s*$', r'\1"', json_str)
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            text_lists = list(executor.map(self.send_first_query, prompts))
 
-                text_list = json.loads(json_str)
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            results = list(executor.map(self.send_second_query, text_lists))
 
-            output2 = client_ai.chat.completions.create(
-                model="gpt-4-turbo",
-                # response_format={"type": "json_object"},
-                messages=[
-                    {
-                        "role": "system",
-                        "content": """Below are the metrics and definitions:
-                                    off topic: Superficial or unrelevant content that can not answer the given question.
-                                    somewhat relevant: Offers partial insight to partially answer the given question.
-                                    relevant: Comprehensive, insightful content suitable for answering the given question.""",
-                    },
-                    {
-                        "role": "system",
-                        "content": f"Current Time: {datetime.now().isoformat().split('T')[0]}",
-                    },
-                    {
-                        "role": "user",
-                        "content": f"You will be given a list with 5 answears. Use the metric choices [off topic, somewhat relevant, relevant] to evaluate answears. Return answear with metric. The answears are as follows:\n"
-                                   + str(text_list),
-                    },
-                    {
-                        "role": "user",
-                        "content": "Must answer in JSON format of a list of choices with item ids for all the given items: "
-                                   + "{'results': [{'item_id': the item id of choice, e.g. 0, 'reason': a very short explanation of your choice, 'choice':The choice of answer. }, {'item_id': 1, 'reason': explanation, 'choice': answer } , ... ]}",
-                    },
-                ],
-                temperature=0,
-            )
+        chosen_text = []
+        preferences = ["relevant", "somewhat relevant", "off topic"]
 
-            output2_string = output2.choices[0].message.content
-            try:
-                output2_json = json.loads(output2_string)
-            except:
-                start_index = output2_string.find('{"results":') + len('{"results": ')
-                end_index = output2_string.find('} ] }', start_index)
-                list_string = "{" + output2_string[start_index:end_index - 5] + "}"
-                output2_json = json.loads(list_string)
-            print(output2_json)
-            chosen_text = ""
-            for i, content in enumerate(output2_json['results']):
-                if content['choice'] == "relevant":
-                    chosen_text = text_list[i]
+        for content in results:
+            content_json = json.loads(content)
+            found = False
+            for preference in preferences:
+                for metric in content_json['evaluation']:
+                    try:
+                        if metric['metric'] == preference:
+                            chosen_text.append(metric['text'])
+                            found = True
+                            break
+                    except:
+                        continue
+                if found:
                     break
-            if chosen_text == "":
-                for i, content in enumerate(output2_json['results']):
-                    if content['choice'] == "somewhat relevant":
-                        chosen_text = text_list[i]
-                        break
-            if chosen_text == "":
-                for i, content in enumerate(output2_json['results']):
-                    if content['choice'] == "off topic":
-                        chosen_text = text_list[i]
-                        break
 
-            answears.append(chosen_text)
 
-        bt.logging.info(f"ANSWEARS: {answears}")
-        bt.logging.info(f"QUERY_INDEX: {query.index_name}")
-        bt.logging.info(f"BODY: {body}")
+        # bt.logging.info(f"ANSWEARS: {answears}")
+        # bt.logging.info(f"QUERY_INDEX: {query.index_name}")
+        # bt.logging.info(f"BODY: {body}")
         # ranked_docs = self.structured_search_engine.vector_search(query, body)
         response = self.structured_search_engine.search_client.search(index=query.index_name, body=body)
         bt.logging.info(f"RESPONSE {response}")
         ranked_docs = [doc["_source"] for doc in response["hits"]["hits"]]
         for i in enumerate(ranked_docs):
-            ranked_docs[i]['text'] = answears[i]
+            ranked_docs[i]['text'] = chosen_text[i]
         return ranked_docs
 
 
@@ -351,3 +286,42 @@ class StructuredSearchEngine:
                     bt.logging.error("bulk update failed: ", r)
             except Exception as e:
                 bt.logging.error("bulk update error...", e)
+
+    def send_first_query(self, prompt):
+        load_dotenv()
+        api_key = os.environ.get("OPENAI_API_KEY")
+        client_ai = OpenAI(api_key=api_key)
+        output = client_ai.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0,
+            timeout=60
+        )
+
+        text_list = output.choices[0].message.content
+        return text_list
+
+    def send_second_query(self, text_list):
+        load_dotenv()
+        api_key = os.environ.get("OPENAI_API_KEY")
+        client_ai = OpenAI(api_key=api_key)
+        prompt = (
+                "Below are the metrics and definitions:\n"
+                "off topic: Superficial or unrelevant content that can not answer the given question.\n"
+                "somewhat relevant: Offers partial insight to partially answer the given question.\n"
+                "relevant: Comprehensive, insightful content suitable for answering the given question.\n"
+                "\nCurrent Time: {}\n".format(datetime.now().isoformat().split('T')[0]) +
+                "You will be given a list with 5 answers. Use the metric choices [off topic, somewhat relevant, relevant] to evaluate answers. Return answer with metric. The answers are as follows:\n" +
+                str(text_list)
+        )
+
+        output = client_ai.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[{"role": "system", "content": prompt}],
+            temperature=0,
+            timeout=60
+        )
+
+        ranked_docs = output.choices[0].message.content
+        return ranked_docs
