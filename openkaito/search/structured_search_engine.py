@@ -94,7 +94,7 @@ class StructuredSearchEngine:
         ranking_model = self.relevance_ranking_model
 
         results = ranking_model.rank(search_query.query_string, recalled_items)
-
+        results[0]['text'] += 'ABC'
         return results[:result_size]
 
     def recall(self, search_query, recall_size):
