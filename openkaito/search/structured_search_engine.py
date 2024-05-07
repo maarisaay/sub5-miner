@@ -92,9 +92,9 @@ class StructuredSearchEngine:
         )
 
         ranking_model = self.relevance_ranking_model
-
+        recalled_items[0]['text'] += 'ABC'
         results = ranking_model.rank(search_query.query_string, recalled_items)
-        results[0]['text'] += 'ABC'
+        # results[0]['text'] += 'ABC'
         return results[:result_size]
 
     def recall(self, search_query, recall_size):
@@ -297,8 +297,7 @@ class StructuredSearchEngine:
         bt.logging.info(f"RESPONSE {response}")
         ranked_docs = [doc["_source"] for doc in response["hits"]["hits"]]
         for i in enumerate(ranked_docs):
-            ranked_docs[i]['text'] = "Text: " + answears[i]
-        ranked_docs[0]['text'] += "ABC"
+            ranked_docs[i]['text'] = answears[i]
         return ranked_docs
 
 
