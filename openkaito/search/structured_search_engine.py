@@ -197,6 +197,8 @@ class StructuredSearchEngine:
                     + doc['text'] +
                     "Provide your answers in a concise and insightful manner, focusing directly on the information relevant to the question. Each answer should be comprehensive and suitable for informed decision-making, incorporating key words from the question to ensure relevance."
                     "Provide the question in less than 30 words. "
+                    "Ensure your responses directly address the specific topics, standards, or opinions mentioned in the question. Include specific quotes or references to relevant sections of the transcript to substantiate your answers."
+                    "After drafting your responses, review them to confirm that they comprehensively address all aspects of the question and are well-supported by the transcript content."
                     """Format your responses as JSON format of {'text': ["answear 1", "answear2", ... ]} """
                     "Remember to: Ensure that each answer is directly related to the question, Provide detailed and insightful information that reflects a deep understanding of the transcript content, Avoid including any off-topic information or unnecessary context in your answers."
             )
