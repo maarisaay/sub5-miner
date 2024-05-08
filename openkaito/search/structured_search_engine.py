@@ -192,6 +192,8 @@ class StructuredSearchEngine:
             prompt = (
                     "You are a crypto researcher, and you will be given speaker transcript as your source of knowledge in ETH Denver 2024. "
                     "Your job is to look for a question about the speaker and text 5 answers that can be answered"
+                    "Question:\n\n"
+                    + query_string +
                     "Transcript:\n\n"
                     + doc['text'] +
                     "Provide the question in less than 30 words. "
