@@ -190,15 +190,15 @@ class StructuredSearchEngine:
         prompts = []
         for doc in body:
             prompt = (
-                    "You are a crypto researcher, and you will be given speaker transcript as your source of knowledge in ETH Denver 2024. "
-                    "Your job is to look for a question about the speaker and text 5 answers that can be answered"
-                    "Question:\n\n"
+                    "You are a crypto researcher, and you will be given speaker transcript as your source of knowledge in ETH Denver 2024. Your primary source of information is a transcript of a speaker's presentation. Your task is to return 5 responds to a specific question related to the speaker's topic."
+                    "Please provide your answers based solely on the content provided in the transcript. The question is as follows:"
                     + query_string +
-                    "Transcript:\n\n"
+                    "Please review the transcript carefully:\n\n"
                     + doc['text'] +
+                    "Provide your answers in a concise and insightful manner, focusing directly on the information relevant to the question. Each answer should be comprehensive and suitable for informed decision-making."
                     "Provide the question in less than 30 words. "
-                    "Please give the answear text only (no questions), without any additional context or explanation. Your answear must be Insightful: Comprehensive, insightful content suitable for informed decision-making. Don't write anything off topic."
-                    """Answear in JSON format of {'text': ["answear 1", "answear2", ... ]}"""
+                    """Format your responses as JSON format of {'text': ["answear 1", "answear2", ... ]} """
+                    "Remember to: Ensure that each answer is directly related to the question, Provide detailed and insightful information that reflects a deep understanding of the transcript content, Avoid including any off-topic information or unnecessary context in your answers."
             )
             prompts.append(prompt)
 
