@@ -23,6 +23,7 @@ class StructuredSearchEngine:
         twitter_crawler=None,
         recall_size=50,
     ):
+        self.structured_search_engine = None
         load_dotenv()
 
         self.search_client = search_client
