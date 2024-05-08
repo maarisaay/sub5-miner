@@ -322,7 +322,7 @@ class StructuredSearchEngine:
         output = client_ai.chat.completions.create(
             model="gpt-4-turbo",
             messages=[{"role": "system", "content": prompt}],
-            temperature=0,
+            temperature=0.7,
             timeout=60
         )
 
