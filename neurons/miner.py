@@ -42,6 +42,127 @@ from openkaito.utils.version import compare_version, get_version
 from openkaito.utils.embeddings import pad_tensor, text_embedding, MAX_EMBEDDING_DIM
 
 
+def create_prompt(doc, index):
+    newline = "\n"
+    return f"ItemId: {index}\nTime: {doc['created_at'].split('T')[0]}\nText: {doc['text'][:1000].replace(newline, '  ')}"
+
+
+def sort_key(entry):
+    priority = {
+        'insightful': 0,
+        'somewhat insightful': 1,
+        'insightless': 2,
+        'outdated': 3
+    }
+    choice = entry['results'][0]['choice']
+    return priority.get(choice, 99)
+
+
+def add_tweet_with_new_id(tweet, new_id, selected_tweets):
+    tweet = tweet.copy()
+    tweet['item_id'] = new_id
+    selected_tweets.append(tweet)
+
+
+def send_query(prompt):
+    load_dotenv()
+    api_key = os.environ.get("OPENAI_API_KEY")
+    client_ai = OpenAI(api_key=api_key)
+
+    response = client_ai.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": """Below are the metrics and definitions: 
+        outdated: Time-sensitive information that is no longer current or relevant.
+        insightless: Superficial content lacking depth and comprehensive insights.
+        somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
+        Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
+            },
+            {
+                "role": "system",
+                "content": """
+            Example 1:
+            ItemId: 0
+            Time: "2023-11-25" 
+            Text: Also driving the charm is Blast's unique design: Depositors start earning yields on the transferred ether alongside BLAST points. "Blast natively participates in ETH staking, and the staking yield is passed back to the L2's users and dapps," the team said in a post Tuesday. 'We've redesigned the L2 from the ground up so that if you have 1 ETH in your wallet on Blast, over time, it grows to 1.04, 1.08, 1.12 ETH automatically."
+            As such, Blast is invite-only as of Tuesday, requiring a code from invited users to gain access. Besides, the BLAST points can be redeemed starting in May.Blast raised over $20 million in a round led by Paradigm and Standard Crypto and is headed by pseudonymous figurehead @PacmanBlur, one of the co-founders of NFT marketplace Blur.
+            @PacmanBlur said in a separate post that Blast was an extension of the Blur ecosystem, letting Blur users earn yields on idle assets while improving the technical aspects required to offer sophisticated NFT products to users.
+            BLUR prices rose 12%% in the past 24 hours following the release of Blast
+
+
+            Output:
+            item_id: 0
+            choice: insightful
+            reason: It is contains insightful information about the Blast project.
+
+            Example 2:
+            ItemId: 1
+            Time: "2024-03-19"
+            Text: $SLERF to the moon!
+            $BOME $SOL $MUMU $BONK $BOPE $WIF $NAP 🥳
+
+            Output:
+            item_id: 1
+            choice: insightless
+            reason: It does not contain much meaningful information, just sentiment about some tickers.
+            """,
+            },
+            {
+                "role": "user",
+                "content": f"You will be given a document with id and you have to rate it based on its information and insightfulness. The document is as follows:\n{prompt}"
+            },
+            {
+                "role": "user",
+                "content": f"Use the metric choices [outdated, insightless, somewhat insightful, insightful] to evaluate the text.",
+            },
+            {
+                "role": "user",
+                "content": "Must answer in JSON format of a list of choices with item ids for all the given items: "
+                           "{'results': [{'item_id': the item id of choice, e.g. 0, 'reason': a very short explanation of your choice, 'choice':The choice of answer. }, {'item_id': 1, 'reason': explanation, 'choice': answer } , ... ] } ",
+            }
+        ],
+        model="gpt-3.5-turbo",
+        temperature=0,
+    )
+    return response.choices[0].message.content
+
+
+def filter_docs(ranked_docs):
+    executor = concurrent.futures.ThreadPoolExecutor()
+    prompts = [create_prompt(doc, i) for i, doc in enumerate(ranked_docs)]
+    responses = list(executor.map(send_query, prompts))
+    data_to_sort = []
+    for response in responses:
+        data = json.loads(response)
+        data_to_sort.append(data)
+    sorted_data = sorted(data_to_sort, key=sort_key)
+    selected_tweets = sorted_data[:10]
+    result = json.dumps({"results": selected_tweets}, indent=4)
+    data_result = json.loads(result)
+    item_ids = []
+    for item in data_result['results']:
+        item_ids.append(item['results'][0]['item_id'])
+    filtered_docs = []
+    for i in range(len(ranked_docs)):
+        if i in item_ids:
+            filtered_docs.append(ranked_docs[i])
+    return filtered_docs
+
+
+def check_version(query):
+    """
+    Check the version of the incoming request and log a warning if it is newer than the miner's running version.
+    """
+    if (
+        query.version is not None
+        and compare_version(query.version, get_version()) > 0
+    ):
+        bt.logging.warning(
+            f"Received request with version {query.version}, is newer than miner running version {get_version()}. You may updating the repo and restart the miner."
+        )
+
+
 class Miner(BaseMinerNeuron):
     """
     Your miner neuron class. You should use this class to define your miner's behavior. In particular, you should replace the forward function with your own logic. You may also want to override the blacklist and priority functions according to your needs.
@@ -96,7 +217,7 @@ class Miner(BaseMinerNeuron):
         """
         start_time = datetime.now()
         bt.logging.info(f"received SearchSynapse: ", query)
-        self.check_version(query)
+        check_version(query)
 
         if not self.config.neuron.disable_crawling:
             crawl_size = max(self.config.neuron.crawl_size, query.size)
@@ -125,7 +246,7 @@ class Miner(BaseMinerNeuron):
         bt.logging.info(
             f"received StructuredSearchSynapse... timeout:{query.timeout}s ", query
         )
-        self.check_version(query)
+        check_version(query)
 
         # miners may adjust this timeout config by themselves according to their own crawler speed and latency
         if query.timeout > 12:
@@ -143,7 +264,7 @@ class Miner(BaseMinerNeuron):
         ranked_docs = self.structured_search_engine.search(query)
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
 
-        filtered_docs = self.filter_docs(ranked_docs)
+        filtered_docs = filter_docs(ranked_docs)
         # bt.logging.info(f"GPT response: {filtered_docs[1]}")
         # bt.logging.debug(f"{len(filtered_docs[0])} filtered_docs", filtered_docs[0])
         query.results = filtered_docs[0]
@@ -162,7 +283,7 @@ class Miner(BaseMinerNeuron):
         bt.logging.info(
             f"received SemanticSearchSynapse... timeout:{query.timeout}s ", query
         )
-        self.check_version(query)
+        check_version(query)
         # body = self.structured_search_engine.vector_search(query)
 
         # ranked_docs = search_engine.get_ranked_docs(answears, query.index_name, body)
@@ -194,122 +315,6 @@ class Miner(BaseMinerNeuron):
             f"Emission:{metagraph.E[self.uid]}"
         )
         bt.logging.info(log)
-
-    def check_version(self, query):
-        """
-        Check the version of the incoming request and log a warning if it is newer than the miner's running version.
-        """
-        if (
-            query.version is not None
-            and compare_version(query.version, get_version()) > 0
-        ):
-            bt.logging.warning(
-                f"Received request with version {query.version}, is newer than miner running version {get_version()}. You may updating the repo and restart the miner."
-            )
-
-    def filter_docs(self, ranked_docs):
-        executor = concurrent.futures.ThreadPoolExecutor()
-        prompts = [self.create_prompt(doc, i) for i, doc in enumerate(ranked_docs)]
-        responses = list(executor.map(self.send_query, prompts))
-        data_to_sort = []
-        for response in responses:
-            data = json.loads(response)
-            data_to_sort.append(data)
-        sorted_data = sorted(data_to_sort, key=self.sort_key)
-        selected_tweets = sorted_data[:10]
-        result = json.dumps({"results": selected_tweets}, indent=4)
-        data_result = json.loads(result)
-        item_ids = []
-        for item in data_result['results']:
-            item_ids.append(item['results'][0]['item_id'])
-        filtered_docs = []
-        for i in range(len(ranked_docs)):
-            if i in item_ids:
-                filtered_docs.append(ranked_docs[i])
-        return filtered_docs
-
-    def create_prompt(self, doc, index):
-        newline = "\n"
-        return f"ItemId: {index}\nTime: {doc['created_at'].split('T')[0]}\nText: {doc['text'][:1000].replace(newline, '  ')}"
-
-    def send_query(self, prompt):
-        load_dotenv()
-        api_key = os.environ.get("OPENAI_API_KEY")
-        client_ai = OpenAI(api_key=api_key)
-
-        response = client_ai.chat.completions.create(
-            messages=[
-                {
-                    "role": "system",
-                    "content": """Below are the metrics and definitions: 
-            outdated: Time-sensitive information that is no longer current or relevant.
-            insightless: Superficial content lacking depth and comprehensive insights.
-            somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
-            Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
-                },
-                {
-                    "role": "system",
-                    "content": """
-                Example 1:
-                ItemId: 0
-                Time: "2023-11-25" 
-                Text: Also driving the charm is Blast's unique design: Depositors start earning yields on the transferred ether alongside BLAST points. "Blast natively participates in ETH staking, and the staking yield is passed back to the L2's users and dapps," the team said in a post Tuesday. 'We've redesigned the L2 from the ground up so that if you have 1 ETH in your wallet on Blast, over time, it grows to 1.04, 1.08, 1.12 ETH automatically."
-                As such, Blast is invite-only as of Tuesday, requiring a code from invited users to gain access. Besides, the BLAST points can be redeemed starting in May.Blast raised over $20 million in a round led by Paradigm and Standard Crypto and is headed by pseudonymous figurehead @PacmanBlur, one of the co-founders of NFT marketplace Blur.
-                @PacmanBlur said in a separate post that Blast was an extension of the Blur ecosystem, letting Blur users earn yields on idle assets while improving the technical aspects required to offer sophisticated NFT products to users.
-                BLUR prices rose 12%% in the past 24 hours following the release of Blast
-
-
-                Output:
-                item_id: 0
-                choice: insightful
-                reason: It is contains insightful information about the Blast project.
-
-                Example 2:
-                ItemId: 1
-                Time: "2024-03-19"
-                Text: $SLERF to the moon!
-                $BOME $SOL $MUMU $BONK $BOPE $WIF $NAP 🥳
-
-                Output:
-                item_id: 1
-                choice: insightless
-                reason: It does not contain much meaningful information, just sentiment about some tickers.
-                """,
-                },
-                {
-                    "role": "user",
-                    "content": f"You will be given a document with id and you have to rate it based on its information and insightfulness. The document is as follows:\n{prompt}"
-                },
-                {
-                    "role": "user",
-                    "content": f"Use the metric choices [outdated, insightless, somewhat insightful, insightful] to evaluate the text.",
-                },
-                {
-                    "role": "user",
-                    "content": "Must answer in JSON format of a list of choices with item ids for all the given items: "
-                               "{'results': [{'item_id': the item id of choice, e.g. 0, 'reason': a very short explanation of your choice, 'choice':The choice of answer. }, {'item_id': 1, 'reason': explanation, 'choice': answer } , ... ] } ",
-                }
-            ],
-            model="gpt-3.5-turbo",
-            temperature=0,
-        )
-        return response.choices[0].message.content
-
-    def sort_key(self, entry):
-        priority = {
-            'insightful': 0,
-            'somewhat insightful': 1,
-            'insightless': 2,
-            'outdated': 3
-        }
-        choice = entry['results'][0]['choice']
-        return priority.get(choice, 99)
-
-
-    def add_tweet_with_new_id(self, tweet, new_id, selected_tweets):
-        tweet = tweet.copy()
-        tweet['item_id'] = new_id
-        selected_tweets.append(tweet)
 
 
 # This is the main function, which runs the miner.
