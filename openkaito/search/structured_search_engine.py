@@ -195,7 +195,7 @@ class StructuredSearchEngine:
                     + query_string +
                     "Please review the transcript carefully:\n\n"
                     + doc['text'] +
-                    "Provide your answers in a concise and insightful manner, focusing directly on the information relevant to the question. Each answer should be comprehensive and suitable for informed decision-making."
+                    "Provide your answers in a concise and insightful manner, focusing directly on the information relevant to the question. Each answer should be comprehensive and suitable for informed decision-making, incorporating key words from the question to ensure relevance."
                     "Provide the question in less than 30 words. "
                     """Format your responses as JSON format of {'text': ["answear 1", "answear2", ... ]} """
                     "Remember to: Ensure that each answer is directly related to the question, Provide detailed and insightful information that reflects a deep understanding of the transcript content, Avoid including any off-topic information or unnecessary context in your answers."
