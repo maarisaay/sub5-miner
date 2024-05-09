@@ -75,7 +75,7 @@ def send_query(prompt):
                 "role": "system",
                 "content": """Below are the metrics and definitions: 
         outdated: Time-sensitive information that is no longer current or relevant.
-        insightless: Superficial content lacking depth and comprehensive insights.
+        insightless: Superficial content lacking depth and comprehensive insights. Additionally, any responses not in English are automatically classified as 'insightless'.
         somewhat insightful: Offers partial insight but lacks depth and comprehensive coverage.
         Insightful: Comprehensive, insightful content suitable for informed decision-making.""",
             },
