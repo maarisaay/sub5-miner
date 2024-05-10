@@ -190,17 +190,13 @@ class StructuredSearchEngine:
         prompts = []
         for doc in body:
             prompt = (
-                    "You are a crypto researcher, and you will be given speaker transcript as your source of knowledge in ETH Denver 2024. Your primary source of information is a transcript of a speaker's presentation. Your task is to return 5 responds to a specific question related to the speaker's topic."
-                    "Please provide your answers based solely on the content provided in the transcript. The question is as follows:"
+                    "You are a crypto researcher, and you will be given a list of speaker transcript segments as your source of knowledge in ETH Denver 2024. "
+                    "Your job is to look for a question about the speaker and text that can be answered by this segment"
+                    "Question:"
                     + query_string +
-                    "Please review the transcript carefully:\n\n"
-                    + doc['text'] +
-                    "Provide your answers in a concise and insightful manner, focusing directly on the information relevant to the question. Each answer should be comprehensive and suitable for informed decision-making, incorporating key words from the question to ensure relevance."
-                    "Provide the question in less than 30-50 words. "
-                    "Ensure your responses directly address the specific topics, standards, or opinions mentioned in the question. Include specific quotes or references to relevant sections of the transcript to substantiate your answers."
-                    "After drafting your responses, review them to confirm that they comprehensively address all aspects of the question and are well-supported by the transcript content."
-                    """Format your responses as JSON format of {'text': ["answear 1", "answear2", ... ]} """
-                    "Remember to: Ensure that each answer includes direct citations from the transcript and incorporates key terms from the question. Provide detailed and insightful information that reflects a deep understanding of the transcript content. Avoid including any off-topic information or unnecessary context in your answers."
+                    "Transcript segments:"
+                    + doc['text']
+                # """Format your responses as JSON format of {'text': ["answear 1", "answear2", ... ]} """
             )
             prompts.append(prompt)
 
@@ -214,17 +210,20 @@ class StructuredSearchEngine:
         preferences = ["relevant", "somewhat relevant", "off topic"]
 
         for content in results:
-            content_json = json.loads(content)
+            print(content)
+            try:
+                content_json = json.loads(content[0])
+            except:
+                content_json = json.loads(content)
             found = False
             for preference in preferences:
-                for metric in content_json['evaluation']:
-                    try:
-                        if metric['metric'] == preference:
-                            chosen_text.append(metric['text'])
-                            found = True
-                            break
-                    except:
-                        continue
+                try:
+                    if content_json[0]['metric'] == preference:
+                        chosen_text.append(content_json[0]['text'])
+                        found = True
+                        break
+                except:
+                    continue
                 if found:
                     break
 
@@ -296,15 +295,19 @@ class StructuredSearchEngine:
         load_dotenv()
         api_key = os.environ.get("OPENAI_API_KEY")
         client_ai = OpenAI(api_key=api_key)
-        output = client_ai.chat.completions.create(
-            model="gpt-4-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0,
-            timeout=60
+        thread = client_ai.beta.threads.create()
+        output = client_ai.beta.threads.runs.create_and_poll(
+            thread_id=thread.id,
+            assistant_id='asst_jpbjaiyAPjdCfJDSjQL3Spf0',
+            instructions=prompt,
         )
-
-        text_list = output.choices[0].message.content
+        messages = client_ai.beta.threads.messages.list(
+            thread_id=thread.id
+        )
+        messages_dicts = [self.message_to_dict(msg) for msg in messages]
+        text_list = []
+        for mes in messages_dicts:
+            text_list.append(mes['content'][0])
         return text_list
 
     def send_second_query(self, text_list):
@@ -316,17 +319,32 @@ class StructuredSearchEngine:
                 "off topic: Superficial or unrelevant content that can not answer the given question.\n"
                 "somewhat relevant: Offers partial insight to partially answer the given question.\n"
                 "relevant: Comprehensive, insightful content suitable for answering the given question.\n"
-                "\nCurrent Time: {}\n".format(datetime.now().isoformat().split('T')[0]) +
                 "You will be given a list with 5 answers. Use the metric choices [off topic, somewhat relevant, relevant] to evaluate answers. Return answer with metric. The answers are as follows:\n" +
-                str(text_list)
+                str(text_list) +
+                """Format your responses as JSON format of [{'text': text, 'metric': metric}, {...}, ... ]"""
         )
 
-        output = client_ai.chat.completions.create(
-            model="gpt-4-turbo",
-            messages=[{"role": "system", "content": prompt}],
-            temperature=0.7,
-            timeout=60
+        thread = client_ai.beta.threads.create()
+        output = client_ai.beta.threads.runs.create_and_poll(
+            thread_id=thread.id,
+            assistant_id='asst_jpbjaiyAPjdCfJDSjQL3Spf0',
+            instructions=prompt,
         )
-
-        ranked_docs = output.choices[0].message.content
+        messages = client_ai.beta.threads.messages.list(
+            thread_id=thread.id
+        )
+        messages_dicts = [self.message_to_dict(msg) for msg in messages]
+        ranked_docs = []
+        for mes in messages_dicts:
+            ranked_docs.append(mes['content'][0])
         return ranked_docs
+
+    def message_to_dict(self, message):
+        return {
+            "id": message.id,
+            "assistant_id": message.assistant_id,
+            "content": [content_block.text.value for content_block in message.content],
+            "created_at": message.created_at,
+            "role": message.role,
+            "thread_id": message.thread_id
+        }
