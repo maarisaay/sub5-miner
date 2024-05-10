@@ -190,12 +190,14 @@ class StructuredSearchEngine:
         prompts = []
         for doc in body:
             prompt = (
-                    "You are a crypto researcher, and you will be given a list of speaker transcript segments as your source of knowledge in ETH Denver 2024. "
-                    "Your job is to look for a question about the speaker and text that can be answered by this segment"
-                    "Question:"
-                    + query_string +
-                    "Transcript segments:"
-                    + doc['text']
+                "You are a crypto researcher, and you will be given a speaker's transcript from ETH Denver 2024 as your primary source of knowledge. "
+                "Here is a question related to the speaker's topic:"
+                + query_string +
+                "\n\nPlease read the following transcript segment carefully:\n\n"
+                + doc['text'] +
+                "\nBased on the transcript above, answer the question by citing specific parts of the transcript that are relevant to the question. "
+                "Your answers should explicitly connect the content of the transcript with the question, using quotes from both the transcript and the question itself to substantiate your response. "
+                "Ensure each answer is comprehensive, accurate, and directly addresses the question based on the transcript content provided. "
                 # """Format your responses as JSON format of {'text': ["answear 1", "answear2", ... ]} """
             )
             prompts.append(prompt)
