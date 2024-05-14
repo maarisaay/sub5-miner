@@ -140,6 +140,8 @@ def filter_docs(ranked_docs):
     for doc in ranked_docs:
         usernames.add(doc['username'])
     filtered_docs = []
+    bt.logging.info("Current Working Directory:", os.getcwd())
+    bt.logging.info("Is file accessible:", os.path.exists('./users_tweets.jsonl'))
     file_path = "./users_tweets.jsonl"
     with open(file_path, 'r') as file:
         for line in file:
