@@ -142,7 +142,7 @@ def filter_docs(ranked_docs):
         usernames.add(doc['username'])
     print(usernames)
     filtered_docs = []
-    file_path = "users_tweets.jsonl"
+    file_path = "C:\Users\mglow\PycharmProjects\openkaito-miner\users_tweets.jsonl"
     with open(file_path, 'r') as file:
         for line in file:
             data = json.loads(line)
