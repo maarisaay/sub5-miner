@@ -21,7 +21,6 @@ import typing
 from datetime import datetime
 import json
 from openai import OpenAI
-
 import bittensor as bt
 from dotenv import load_dotenv
 from elasticsearch import Elasticsearch
@@ -140,9 +139,8 @@ def filter_docs(ranked_docs):
     usernames = set()
     for doc in ranked_docs:
         usernames.add(doc['username'])
-    print(usernames)
     filtered_docs = []
-    file_path = "C:\Users\mglow\PycharmProjects\openkaito-miner\users_tweets.jsonl"
+    file_path = "openkaito-miner/users_tweets.jsonl"
     with open(file_path, 'r') as file:
         for line in file:
             data = json.loads(line)
