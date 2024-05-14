@@ -137,13 +137,28 @@ def filter_docs(ranked_docs):
         data = json.loads(response)
         data_to_sort.append(data)
     sorted_data = sorted(data_to_sort, key=sort_key)
-    selected_tweets = sorted_data[:10]
+    usernames = set()
+    for doc in ranked_docs:
+        usernames.add(doc['username'])
+    print(usernames)
+    filtered_docs = []
+    file_path = "users_tweets.jsonl"
+    with open(file_path, 'r') as file:
+        for line in file:
+            data = json.loads(line)
+            if 'username' in data and data['username'] in usernames:
+                urls = data['urls']
+                for doc in ranked_docs:
+                    if doc['id'] in urls:
+                        filtered_docs.append(doc)
+    data_len = 10 - len(filtered_docs)
+    selected_tweets = sorted_data[:data_len]
     result = json.dumps({"results": selected_tweets}, indent=4)
     data_result = json.loads(result)
     item_ids = []
     for item in data_result['results']:
         item_ids.append(item['results'][0]['item_id'])
-    filtered_docs = []
+
     for i in range(len(ranked_docs)):
         if i in item_ids:
             filtered_docs.append(ranked_docs[i])
