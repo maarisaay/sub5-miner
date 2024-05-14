@@ -203,10 +203,10 @@ class StructuredSearchEngine:
             prompts.append(prompt)
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            text_lists = list(executor.map(self.send_first_query_tuning, prompts))
+            text_lists = list(executor.map(self.send_first_query, prompts))
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            results = list(executor.map(self.send_second_query_tuning, text_lists))
+            results = list(executor.map(self.send_second_query, text_lists))
 
         chosen_text = []
         preferences = ["relevant", "somewhat relevant", "off topic"]
@@ -350,48 +350,3 @@ class StructuredSearchEngine:
             "role": message.role,
             "thread_id": message.thread_id
         }
-
-    def send_first_query_tuning(self, prompt):
-        load_dotenv()
-        api_key = os.environ.get("OPENAI_API_KEY")
-        client_ai = OpenAI(api_key=api_key)
-        output = client_ai.completions.create(
-            model="ft:davinci-002:dawomeq01::9NKZJPPn",
-            prompt=[{
-                "role": "user",
-                "content": prompt,
-            }]
-        )
-        return output.choices[0].text
-
-    def send_second_query_tuning(self, text_list):
-        load_dotenv()
-        api_key = os.environ.get("OPENAI_API_KEY")
-        client_ai = OpenAI(api_key=api_key)
-        prompt = (
-                "Below are the metrics and definitions for evaluating the answers:\n"
-                "- Off topic: The content does not answer the given question or is unrelated.\n"
-                "- Somewhat relevant: The content offers partial insight but does not fully address the question.\n"
-                "- Relevant: The content directly answers the question with comprehensive and insightful information.\n\n"
-                "Please evaluate the following answers based on the criteria provided above. Use the metric choices "
-                "[off topic, somewhat relevant, relevant] to classify each answer. Your response should be formatted as a "
-                "list of dictionaries, each containing the 'text' of the answer and your 'metric' classification. "
-                "Ensure your responses directly correspond to the provided answers and include specific reasons for your classification.\n\n"
-                "Answers for Evaluation:\n"
-                + ''.join(f"- {answer}\n" for answer in text_list) +
-                "\nExample of expected format response:\n"
-                "[{'text': 'Example text of the answer', 'metric': 'relevant'}, {'text': 'Another example text', 'metric': 'off topic'}]\n\n"
-                "Format your responses correctly and ensure each metric is clearly justified based on the content of the answer."
-        )
-
-        output = client_ai.completions.create(
-            model="ft:davinci-002:dawomeq01::9NKZJPPn",
-            prompt=[{
-                "role": "user",
-                "content": prompt,
-            }],
-            max_tokens=150,
-            stop=None,
-            temperature=0.3
-        )
-        return output.choices[0].text
