@@ -140,29 +140,43 @@ def filter_docs(ranked_docs):
     for doc in ranked_docs:
         usernames.add(doc['username'])
     filtered_docs = []
-    bt.logging.info("Current Working Directory:", os.getcwd())
-    bt.logging.info("Is file accessible:", os.path.exists('./users_tweets.jsonl'))
-    file_path = "./users_tweets.jsonl"
+    file_path = "/home/ubuntu/sub5-miner/users_tweets.jsonl"
     with open(file_path, 'r') as file:
         for line in file:
-            data = json.loads(line)
-            if 'username' in data and data['username'] in usernames:
-                urls = data['urls']
-                for doc in ranked_docs:
-                    if doc['id'] in urls:
-                        filtered_docs.append(doc)
-    data_len = 10 - len(filtered_docs)
-    selected_tweets = sorted_data[:data_len]
-    result = json.dumps({"results": selected_tweets}, indent=4)
-    data_result = json.loads(result)
-    item_ids = []
-    for item in data_result['results']:
-        item_ids.append(item['results'][0]['item_id'])
+            if 'username' in json.loads(line) and json.loads(line)['username'] in usernames:
+                for url in json.loads(line)['urls']:
+                    filtered_docs.append(url)
 
-    for i in range(len(ranked_docs)):
-        if i in item_ids:
-            filtered_docs.append(ranked_docs[i])
-    return filtered_docs
+    def get_docs_by_category(category):
+        return [doc['results'][0]['item_id'] for doc in sorted_data if doc['results'][0]['choice'] == category]
+
+    ids_insightful = get_docs_by_category('insightful')
+
+    categories = ['somewhat insightful', 'insightless', 'outdated']
+
+    ids_other = []
+
+    for category in categories:
+        additional_docs = get_docs_by_category(category)
+        for doc in additional_docs:
+            ids_other.append(doc)
+
+    final_docs = []
+
+    for id_insightful in ids_insightful:
+        if len(final_docs) < 10:
+            final_docs.append(ranked_docs[id_insightful])
+
+    for doc in ranked_docs:
+        if len(final_docs) < 10 and doc['id'] in filtered_docs:
+            final_docs.append(doc)
+
+    for id_other in ids_other:
+        if len(final_docs) < 10:
+            final_docs.append(ranked_docs[id_other])
+
+    return final_docs
+
 
 
 def check_version(query):
