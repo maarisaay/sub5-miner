@@ -243,6 +243,7 @@ class Miner(BaseMinerNeuron):
                 max_size=crawl_size,
             )
 
+        bt.logging.info("MINER 3")
         ranked_docs = self.structured_search_engine.search(query)
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
         query.results = ranked_docs
@@ -277,6 +278,7 @@ class Miner(BaseMinerNeuron):
         # disable crawling for structured search by default
 
         ranked_docs = self.structured_search_engine.search(query)
+        bt.logging.info("MINER 3")
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
 
         filtered_docs = filter_docs(ranked_docs)
@@ -303,7 +305,7 @@ class Miner(BaseMinerNeuron):
 
         # ranked_docs = search_engine.get_ranked_docs(answears, query.index_name, body)
 
-        bt.logging.info("MINER 1")
+        bt.logging.info("MINER 3")
         ranked_docs = self.structured_search_engine.vector_search(query)
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
         bt.logging.info(f"QUERY: {query.query_string}")
