@@ -195,9 +195,7 @@ class StructuredSearchEngine:
                 + query_string +
                 "\n\nPlease read the following transcript segment carefully:\n\n"
                 + doc['text'] +
-                "\nBased on the transcript above, answer the question by citing specific parts of the transcript that are relevant to the question. "
-                "Your answers should explicitly connect the content of the transcript with the question, using quotes from both the transcript and the question itself to substantiate your response. "
-                "Ensure each answer is comprehensive, accurate, and directly addresses the question based on the transcript content provided. "
+                "\nBased on the transcript above, answer the question answer solely based on this transcript. Each response must cite part of the question and part of the transcript."
                 # """Format your responses as JSON format of {'text': ["answear 1", "answear2", ... ]} """
             )
             prompts.append(prompt)
@@ -300,7 +298,7 @@ class StructuredSearchEngine:
         thread = client_ai.beta.threads.create()
         output = client_ai.beta.threads.runs.create_and_poll(
             thread_id=thread.id,
-            assistant_id='asst_jpbjaiyAPjdCfJDSjQL3Spf0',
+            assistant_id='asst_l6oByRU0w2ElI8LqrpWesNqB',
             instructions=prompt,
         )
         messages = client_ai.beta.threads.messages.list(
@@ -329,7 +327,7 @@ class StructuredSearchEngine:
         thread = client_ai.beta.threads.create()
         output = client_ai.beta.threads.runs.create_and_poll(
             thread_id=thread.id,
-            assistant_id='asst_jpbjaiyAPjdCfJDSjQL3Spf0',
+            assistant_id='asst_l6oByRU0w2ElI8LqrpWesNqB',
             instructions=prompt,
         )
         messages = client_ai.beta.threads.messages.list(
