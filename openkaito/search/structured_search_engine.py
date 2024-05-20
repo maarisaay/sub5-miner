@@ -300,7 +300,7 @@ class StructuredSearchEngine:
         thread = client_ai.beta.threads.create()
         output = client_ai.beta.threads.runs.create_and_poll(
             thread_id=thread.id,
-            assistant_id='asst_jpbjaiyAPjdCfJDSjQL3Spf0',
+            assistant_id='asst_LLUKdYUpGZDd25niw6HNq9aX',
             instructions=prompt,
         )
         messages = client_ai.beta.threads.messages.list(
@@ -329,7 +329,7 @@ class StructuredSearchEngine:
         thread = client_ai.beta.threads.create()
         output = client_ai.beta.threads.runs.create_and_poll(
             thread_id=thread.id,
-            assistant_id='asst_jpbjaiyAPjdCfJDSjQL3Spf0',
+            assistant_id='asst_LLUKdYUpGZDd25niw6HNq9aX',
             instructions=prompt,
         )
         messages = client_ai.beta.threads.messages.list(
