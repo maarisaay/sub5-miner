@@ -346,7 +346,7 @@ class StructuredSearchEngine:
         api_key = os.environ.get("OPENAI_API_KEY")
         client_ai = OpenAI(api_key=api_key)
         output = client_ai.completions.create(
-            model="ft:davinci-002:dawomeq01::9PTscfX4",
+            model="ft:gpt-3.5-turbo-0125:dawomeq01::9TTIpKtY",
             prompt=[{
                 "role": "user",
                 "content": prompt,
@@ -375,7 +375,7 @@ class StructuredSearchEngine:
         )
 
         output = client_ai.completions.create(
-            model="ft:davinci-002:dawomeq01::9PTscfX4",
+            model="ft:gpt-3.5-turbo-0125:dawomeq01::9TTIpKtY",
             prompt=[{
                 "role": "user",
                 "content": prompt,
