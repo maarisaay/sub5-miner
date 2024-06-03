@@ -350,6 +350,7 @@ class StructuredSearchEngine:
         return ranked_docs
 
     def crawl_and_index_data(self, query_string, author_usernames, max_size):
+    def crawl_and_index_data(self, query_string, author_usernames, max_size):
         """
         Crawls the data from the twitter crawler and indexes it in the elasticsearch database.
         """
