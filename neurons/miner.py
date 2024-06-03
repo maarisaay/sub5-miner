@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2024 OpenKaito
-import concurrent
+
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -17,20 +17,21 @@ import concurrent
 
 import os
 import time
-import typing
 from datetime import datetime
 import json
 from openai import OpenAI
+import concurrent
+from concurrent.futures import ThreadPoolExecutor
+
 import bittensor as bt
 from dotenv import load_dotenv
 from elasticsearch import Elasticsearch
-import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import openkaito
 from openkaito.base.miner import BaseMinerNeuron
 from openkaito.crawlers.twitter.apidojo import ApiDojoTwitterCrawler
 from openkaito.protocol import (
+    DiscordSearchSynapse,
     SearchSynapse,
     StructuredSearchSynapse,
     SemanticSearchSynapse,
@@ -38,13 +39,10 @@ from openkaito.protocol import (
 from openkaito.search.ranking import HeuristicRankingModel
 from openkaito.search.structured_search_engine import StructuredSearchEngine
 from openkaito.utils.version import compare_version, get_version
-from openkaito.utils.embeddings import pad_tensor, text_embedding, MAX_EMBEDDING_DIM
-
 
 def create_prompt(doc, index):
     newline = "\n"
     return f"ItemId: {index}\nTime: {doc['created_at'].split('T')[0]}\nText: {doc['text'][:1000].replace(newline, '  ')}"
-
 
 def sort_key(entry):
     priority = {
@@ -56,12 +54,10 @@ def sort_key(entry):
     choice = entry['results'][0]['choice']
     return priority.get(choice, 99)
 
-
 def add_tweet_with_new_id(tweet, new_id, selected_tweets):
     tweet = tweet.copy()
     tweet['item_id'] = new_id
     selected_tweets.append(tweet)
-
 
 def send_query(prompt):
     load_dotenv()
@@ -126,7 +122,6 @@ def send_query(prompt):
     )
     return response.choices[0].message.content
 
-
 def filter_docs(ranked_docs):
     executor = concurrent.futures.ThreadPoolExecutor()
     prompts = [create_prompt(doc, i) for i, doc in enumerate(ranked_docs)]
@@ -176,21 +171,6 @@ def filter_docs(ranked_docs):
             final_docs.append(ranked_docs[id_other])
 
     return final_docs
-
-
-
-def check_version(query):
-    """
-    Check the version of the incoming request and log a warning if it is newer than the miner's running version.
-    """
-    if (
-        query.version is not None
-        and compare_version(query.version, get_version()) > 0
-    ):
-        bt.logging.warning(
-            f"Received request with version {query.version}, is newer than miner running version {get_version()}. You may updating the repo and restart the miner."
-        )
-
 
 class Miner(BaseMinerNeuron):
     """
@@ -246,7 +226,7 @@ class Miner(BaseMinerNeuron):
         """
         start_time = datetime.now()
         bt.logging.info(f"received SearchSynapse: ", query)
-        check_version(query)
+        self.check_version(query)
 
         if not self.config.neuron.disable_crawling:
             crawl_size = max(self.config.neuron.crawl_size, query.size)
@@ -258,6 +238,7 @@ class Miner(BaseMinerNeuron):
             )
 
         ranked_docs = self.structured_search_engine.search(query)
+
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
         query.results = ranked_docs
         end_time = datetime.now()
@@ -275,7 +256,7 @@ class Miner(BaseMinerNeuron):
         bt.logging.info(
             f"received StructuredSearchSynapse... timeout:{query.timeout}s ", query
         )
-        check_version(query)
+        self.check_version(query)
 
         # miners may adjust this timeout config by themselves according to their own crawler speed and latency
         if query.timeout > 12:
@@ -289,14 +270,11 @@ class Miner(BaseMinerNeuron):
             )
 
         # disable crawling for structured search by default
-
         ranked_docs = self.structured_search_engine.search(query)
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
-
         filtered_docs = filter_docs(ranked_docs)
-        # bt.logging.info(f"GPT response: {filtered_docs[1]}")
-        # bt.logging.debug(f"{len(filtered_docs[0])} filtered_docs", filtered_docs[0])
         query.results = filtered_docs
+        query.results = ranked_docs
         end_time = datetime.now()
         elapsed_time = (end_time - start_time).total_seconds()
         bt.logging.info(
@@ -312,19 +290,35 @@ class Miner(BaseMinerNeuron):
         bt.logging.info(
             f"received SemanticSearchSynapse... timeout:{query.timeout}s ", query
         )
-        check_version(query)
-        # body = self.structured_search_engine.vector_search(query)
-
-        # ranked_docs = search_engine.get_ranked_docs(answears, query.index_name, body)
+        self.check_version(query)
 
         ranked_docs = self.structured_search_engine.vector_search(query)
         bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
-        bt.logging.info(f"QUERY: {query.query_string}")
         query.results = ranked_docs
         end_time = datetime.now()
         elapsed_time = (end_time - start_time).total_seconds()
         bt.logging.info(
             f"processed SemanticSearchSynapse in {elapsed_time} seconds",
+        )
+        return query
+
+    async def forward_discord_search(
+        self, query: DiscordSearchSynapse
+    ) -> DiscordSearchSynapse:
+
+        start_time = datetime.now()
+        bt.logging.info(
+            f"received DiscordSearchSynapse... timeout:{query.timeout}s ", query
+        )
+        self.check_version(query)
+
+        ranked_docs = self.structured_search_engine.discord_search(query)
+        bt.logging.debug(f"{len(ranked_docs)} ranked_docs", ranked_docs)
+        query.results = ranked_docs
+        end_time = datetime.now()
+        elapsed_time = (end_time - start_time).total_seconds()
+        bt.logging.info(
+            f"processed DiscordSearchSynapse in {elapsed_time} seconds",
         )
         return query
 
@@ -345,6 +339,18 @@ class Miner(BaseMinerNeuron):
             f"Emission:{metagraph.E[self.uid]}"
         )
         bt.logging.info(log)
+
+    def check_version(self, query):
+        """
+        Check the version of the incoming request and log a warning if it is newer than the miner's running version.
+        """
+        if (
+            query.version is not None
+            and compare_version(query.version, get_version()) > 0
+        ):
+            bt.logging.warning(
+                f"Received request with version {query.version}, is newer than miner running version {get_version()}. You may updating the repo and restart the miner."
+            )
 
 
 # This is the main function, which runs the miner.
