@@ -102,7 +102,7 @@ class ApiDojoTwitterCrawler:
         result = self.process_list(
             self.client.dataset(run["defaultDatasetId"]).iterate_items()
         )
-        # bt.logging.trace(f"Apify Actor Result: {result}")
+        bt.logging.trace(f"Apify Actor Result: {result}")
         return result
 
     def process_item(self, item):

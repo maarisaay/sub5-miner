@@ -26,6 +26,7 @@ import torch
 
 from openkaito.base.neuron import BaseNeuron
 from openkaito.protocol import (
+    DiscordSearchSynapse,
     SearchSynapse,
     SemanticSearchSynapse,
     StructuredSearchSynapse,
@@ -70,6 +71,10 @@ class BaseMinerNeuron(BaseNeuron):
             forward_fn=self.forward_semantic_search,
             blacklist_fn=self.blacklist_semantic_search,
             priority_fn=self.priority_semantic_search,
+        ).attach(
+            forward_fn=self.forward_discord_search,
+            blacklist_fn=self.blacklist_discord_search,
+            priority_fn=self.priority_discord_search,
         )
         bt.logging.info(f"Axon created: {self.axon}")
 
@@ -97,6 +102,11 @@ class BaseMinerNeuron(BaseNeuron):
         self, query: SemanticSearchSynapse
     ) -> SemanticSearchSynapse:
         bt.logging.warning("unimplemented: forward_semantic_search()")
+
+    async def forward_discord_search(
+        self, query: DiscordSearchSynapse
+    ) -> DiscordSearchSynapse:
+        bt.logging.warning("unimplemented: forward_discord_search()")
 
     def run(self):
         """
@@ -257,22 +267,18 @@ class BaseMinerNeuron(BaseNeuron):
 
         Otherwise, allow the request to be processed further.
         """
-        uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
-        exempt_hotkey = "5EWRAsJvYyV9zwZYzU4Sn2FtxBE4VMt2CZWRg1fc99Ahhh4T"
-        if synapse.dendrite.hotkey == exempt_hotkey:
-            bt.logging.trace(f"Allowing exempt hotkey {synapse.dendrite.hotkey}")
-            return False, "Exempt hotkey allowed"
-
-        if (
-            not self.config.blacklist.allow_non_registered
-            and synapse.dendrite.hotkey not in self.metagraph.hotkeys
-        ):
-            # Ignore requests from un-registered entities.
+        if not synapse.dendrite.hotkey:
+            return True, "Hotkey not provided"
+        registered = synapse.dendrite.hotkey in self.metagraph.hotkeys
+        if self.config.blacklist.allow_non_registered and not registered:
+            return False, "Allowing un-registered hotkey"
+        elif not registered:
             bt.logging.trace(
                 f"Blacklisting un-registered hotkey {synapse.dendrite.hotkey}"
             )
-            return True, "Unrecognized hotkey"
+            return True, f"Unrecognized hotkey {synapse.dendrite.hotkey}"
 
+        uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
         if self.config.blacklist.force_validator_permit:
             # If the config is set to force validator permit, then we should only allow requests from validators.
             if not self.metagraph.validator_permit[uid]:
@@ -280,6 +286,11 @@ class BaseMinerNeuron(BaseNeuron):
                     f"Blacklisting a request from non-validator hotkey {synapse.dendrite.hotkey}"
                 )
                 return True, "Non-validator hotkey"
+
+        stake = self.metagraph.S[uid].item()
+        if self.config.blacklist.validator_min_stake and stake < self.config.blacklist.validator_min_stake:
+            bt.logging.warning(f"Blacklisting request from {synapse.dendrite.hotkey} [uid={uid}], not enough stake -- {stake}")
+            return True, "Stake below minimum"
 
         bt.logging.trace(
             f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}"
@@ -339,6 +350,14 @@ class BaseMinerNeuron(BaseNeuron):
         return await self.blacklist(synapse)
 
     async def priority_semantic_search(self, synapse: SemanticSearchSynapse) -> float:
+        return await self.priority(synapse)
+
+    async def blacklist_discord_search(
+        self, synapse: DiscordSearchSynapse
+    ) -> typing.Tuple[bool, str]:
+        return await self.blacklist(synapse)
+
+    async def priority_discord_search(self, synapse: DiscordSearchSynapse) -> float:
         return await self.priority(synapse)
 
     def save_state(self):
