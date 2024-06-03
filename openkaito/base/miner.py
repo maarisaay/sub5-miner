@@ -286,60 +286,60 @@ class BaseMinerNeuron(BaseNeuron):
         )
         return False, "Hotkey recognized!"
 
-    async def priority(self, synapse: bt.Synapse) -> float:
-        """
-        The priority function determines the order in which requests are handled. More valuable or higher-priority
-        requests are processed before others.
-
-        This implementation assigns priority to incoming requests based on the calling entity's stake in the metagraph.
-
-        Args:
-            synapse (bt.Synapse): The synapse object that contains metadata about the incoming request.
-
-        Returns:
-            float: A priority score derived from the stake of the calling entity.
-
-        Miners may recieve messages from multiple entities at once. This function determines which request should be
-        processed first. Higher values indicate that the request should be processed first. Lower values indicate
-        that the request should be processed later.
-
-        Example priority logic:
-        - A higher stake results in a higher priority value.
-        """
-        caller_uid = self.metagraph.hotkeys.index(
-            synapse.dendrite.hotkey
-        )  # Get the caller index.
-        prirority = float(
-            self.metagraph.S[caller_uid]
-        )  # Return the stake as the priority.
-        bt.logging.trace(
-            f"Prioritizing {synapse.dendrite.hotkey} with value: ", prirority
-        )
-        return prirority
+    # async def priority(self, synapse: bt.Synapse) -> float:
+    #     """
+    #     The priority function determines the order in which requests are handled. More valuable or higher-priority
+    #     requests are processed before others.
+    #
+    #     This implementation assigns priority to incoming requests based on the calling entity's stake in the metagraph.
+    #
+    #     Args:
+    #         synapse (bt.Synapse): The synapse object that contains metadata about the incoming request.
+    #
+    #     Returns:
+    #         float: A priority score derived from the stake of the calling entity.
+    #
+    #     Miners may recieve messages from multiple entities at once. This function determines which request should be
+    #     processed first. Higher values indicate that the request should be processed first. Lower values indicate
+    #     that the request should be processed later.
+    #
+    #     Example priority logic:
+    #     - A higher stake results in a higher priority value.
+    #     """
+    #     caller_uid = self.metagraph.hotkeys.index(
+    #         synapse.dendrite.hotkey
+    #     )  # Get the caller index.
+    #     prirority = float(
+    #         self.metagraph.S[caller_uid]
+    #     )  # Return the stake as the priority.
+    #     bt.logging.trace(
+    #         f"Prioritizing {synapse.dendrite.hotkey} with value: ", prirority
+    #     )
+    #     return prirority
 
     async def blacklist_search(self, synapse: SearchSynapse) -> typing.Tuple[bool, str]:
         return await self.blacklist(synapse)
 
-    async def priority_search(self, synapse: SearchSynapse) -> float:
-        return await self.priority(synapse)
+    # async def priority_search(self, synapse: SearchSynapse) -> float:
+    #     return await self.priority(synapse)
 
     async def blacklist_structured_search(
         self, synapse: StructuredSearchSynapse
     ) -> typing.Tuple[bool, str]:
         return await self.blacklist(synapse)
 
-    async def priority_structured_search(
-        self, synapse: StructuredSearchSynapse
-    ) -> float:
-        return await self.priority(synapse)
+    # async def priority_structured_search(
+    #     self, synapse: StructuredSearchSynapse
+    # ) -> float:
+    #     return await self.priority(synapse)
 
     async def blacklist_semantic_search(
         self, synapse: SemanticSearchSynapse
     ) -> typing.Tuple[bool, str]:
         return await self.blacklist(synapse)
 
-    async def priority_semantic_search(self, synapse: SemanticSearchSynapse) -> float:
-        return await self.priority(synapse)
+    # async def priority_semantic_search(self, synapse: SemanticSearchSynapse) -> float:
+    #     return await self.priority(synapse)
 
     def save_state(self):
         pass
