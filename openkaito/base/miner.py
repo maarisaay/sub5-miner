@@ -58,19 +58,19 @@ class BaseMinerNeuron(BaseNeuron):
 
         # Attach determiners which functions are called when servicing a request.
         bt.logging.info(f"Attaching forward function to miner axon.")
-        self.axon.attach(
-            forward_fn=self.forward_search,
-            blacklist_fn=self.blacklist_search,
-            priority_fn=self.priority_search,
-        ).attach(
-            forward_fn=self.forward_structured_search,
-            blacklist_fn=self.blacklist_structured_search,
-            priority_fn=self.priority_structured_search,
-        ).attach(
-            forward_fn=self.forward_semantic_search,
-            blacklist_fn=self.blacklist_semantic_search,
-            priority_fn=self.priority_semantic_search,
-        )
+        # self.axon.attach(
+        #     forward_fn=self.forward_search,
+        #     blacklist_fn=self.blacklist_search,
+        #     priority_fn=self.priority_search,
+        # ).attach(
+        #     forward_fn=self.forward_structured_search,
+        #     blacklist_fn=self.blacklist_structured_search,
+        #     priority_fn=self.priority_structured_search,
+        # ).attach(
+        #     forward_fn=self.forward_semantic_search,
+        #     blacklist_fn=self.blacklist_semantic_search,
+        #     priority_fn=self.priority_semantic_search,
+        # )
         bt.logging.info(f"Axon created: {self.axon}")
 
         self.last_sync_block = self.block - 1000
