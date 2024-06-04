@@ -73,7 +73,7 @@ class BaseMinerNeuron(BaseNeuron):
             priority_fn=self.priority_semantic_search,
         ).attach(
             forward_fn=self.forward_discord_search,
-            blacklist_fn=self.blacklist_discord_search,
+            # blacklist_fn=self.blacklist_discord_search,
             priority_fn=self.priority_discord_search,
         )
         bt.logging.info(f"Axon created: {self.axon}")
@@ -352,10 +352,10 @@ class BaseMinerNeuron(BaseNeuron):
     async def priority_semantic_search(self, synapse: SemanticSearchSynapse) -> float:
         return await self.priority(synapse)
 
-    async def blacklist_discord_search(
-        self, synapse: DiscordSearchSynapse
-    ) -> typing.Tuple[bool, str]:
-        return await self.blacklist(synapse)
+    # async def blacklist_discord_search(
+    #     self, synapse: DiscordSearchSynapse
+    # ) -> typing.Tuple[bool, str]:
+    #     return await self.blacklist(synapse)
 
     async def priority_discord_search(self, synapse: DiscordSearchSynapse) -> float:
         return await self.priority(synapse)
